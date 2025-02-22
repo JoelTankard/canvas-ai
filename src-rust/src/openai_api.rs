@@ -345,7 +345,7 @@ pub async fn analyze_image(api_key: &str, image_url: &str) -> Result<String, JsV
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
-            "model": "gpt-4-vision-preview",
+            "model": "gpt-4o-mini",
             "messages": [{
                 "role": "user",
                 "content": [
