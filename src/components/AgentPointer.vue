@@ -1,7 +1,10 @@
 <template>
     <div class="agent-pointer-wrapper" :style="pointerStyle">
-        <div class="agent-pointer" :style="arrowStyle">
-            <div class="agent-pointer-inner">
+        <div class="agent-pointer">
+            <div class="agent-image">
+                <img src="@/assets/small-agent.png" alt="Agent" />
+            </div>
+            <div class="agent-pointer-inner" :style="arrowStyle">
                 <img src="@/assets/pointer.png" alt="Agent Pointer" />
             </div>
         </div>
@@ -69,8 +72,11 @@
         const centerY = window.innerHeight / 2;
         const angle = Math.atan2(pos.y - centerY, pos.x - centerX) * (180 / Math.PI);
 
-        // Scale transition duration with zoom (slower at higher zoom levels)
-        const transitionDuration = Math.max(1, Math.min(3, 1 + 0.8 * zoomTransform.value.scale));
+        // Different transition speeds for in-view vs out-of-view
+        const inViewDuration = 0.1; // Fast follow when in view
+        const outOfViewDuration = Math.max(1, Math.min(3, 1 + 0.8 * zoomTransform.value.scale)); // Slow for edge pointing
+
+        const transitionDuration = inView ? inViewDuration : outOfViewDuration;
 
         let transform;
         if (inView) {
@@ -95,36 +101,35 @@
     };
 
     const arrowStyle = computed(() => {
-        // Scale transition duration with zoom
-        const transitionDuration = Math.max(1, Math.min(3, 1 + 0.8 * zoomTransform.value.scale));
+        const inView = isInViewport(agentPosition.value.x, agentPosition.value.y);
+        const inViewDuration = 0.1;
+        const outOfViewDuration = Math.max(1, Math.min(3, 1 + 0.8 * zoomTransform.value.scale));
 
         return {
             transform: `rotate(var(--pointer-angle))`,
-            transition: `transform ${transitionDuration}s ease-out`,
+            transition: `transform ${inView ? inViewDuration : outOfViewDuration}s ease-out`,
         };
     });
 </script>
 
 <style lang="scss" scoped>
     .agent-pointer-wrapper {
-        @apply fixed pointer-events-none;
+        @apply fixed pointer-events-none h-16 w-16  flex items-center justify-center;
         z-index: 1000;
+    }
+    img {
+        @apply w-full h-full object-contain;
     }
 
     .agent-pointer {
-        @apply absolute;
-        transform-origin: center;
+        @apply absolute inset-0 flex items-center justify-end origin-center;
+    }
+
+    .agent-image {
+        @apply absolute inset-0;
     }
 
     .agent-pointer-inner {
-        @apply flex items-center justify-center;
-        width: 32px;
-        height: 32px;
-
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
+        @apply flex items-end justify-center absolute -m-8;
     }
 </style>
