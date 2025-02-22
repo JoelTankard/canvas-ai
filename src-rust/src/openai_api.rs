@@ -357,7 +357,7 @@ pub async fn process_file(
     let client = Client::new();
 
     // Create a message in the thread
-    let message_response = client
+    client
         .post(&format!("{}/threads/{}/messages", BASE_URL, thread_id))
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
@@ -371,11 +371,6 @@ pub async fn process_file(
             }]
         }))
         .send()
-        .await
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
-
-    let message: MessageResponse = message_response
-        .json()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
