@@ -4,6 +4,8 @@ import { useUserPersistedStore } from "@store/user";
 import { useSessionStore } from "@store/session";
 import { upload_file } from "src-rust";
 import { useRoute } from "vue-router";
+import { addFileToQueue, addImageToQueue } from "./thread";
+
 export interface UploadedFile {
     id: string;
     sessionId: string;
@@ -39,7 +41,7 @@ export const useFilesStore = defineStore(
                 const uploadResponse = await upload_file(openaiApiKey, uint8Array, file.name);
                 const uploadResult = JSON.parse(uploadResponse);
 
-                files.value.push({
+                const uploadedFile: UploadedFile = {
                     id: uploadResult.id,
                     sessionId: sessionId,
                     name: file.name,
@@ -49,7 +51,21 @@ export const useFilesStore = defineStore(
                     content: "",
                     createdAt: new Date(),
                     error: null,
-                });
+                };
+
+                files.value.push(uploadedFile);
+
+                // Add the file to the appropriate queue
+                if (file.type.startsWith("image/")) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64String = reader.result as string;
+                        addImageToQueue(uploadedFile.id, base64String, sessionId);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    addFileToQueue(uploadedFile.id, sessionId);
+                }
 
                 return uploadResult.id;
             } catch (error) {
@@ -71,11 +87,19 @@ export const useFilesStore = defineStore(
             return files.value.filter((file) => file.sessionId === sessionId);
         }
 
+        function updateFileContent(id: string, content: string) {
+            const file = getFileById(id);
+            if (file) {
+                file.content = content;
+            }
+        }
+
         return {
             files,
             uploadFile,
             clearFiles,
             getFileById,
+            updateFileContent,
             getFilesBySessionId,
         };
     },
