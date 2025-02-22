@@ -1,6 +1,8 @@
 <template>
     <div class="absolute top-0 left-0">
-        <div ref="dropZoneRef" class="w-72 h-48 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-500 transition-colors duration-300">Drop files here</div>
+        <div ref="dropZoneRef" class="w-72 h-48 border-2 border-dashed transition-colors duration-300" :class="[isOverDropZone ? 'border-blue-500 bg-blue-50' : 'border-gray-300']" @dragover.prevent @drop.prevent>
+            <div class="flex items-center justify-center text-gray-500 h-full">Drop files here</div>
+        </div>
         <ul class="mt-4">
             <li v-for="file in uploadedFiles" :key="file.name" class="text-gray-700">
                 {{ file.name }}
@@ -29,7 +31,7 @@
 
     const { isOverDropZone } = useDropZone(dropZoneRef, {
         onDrop,
-        dataTypes: ["image/jpeg", "image/png", "image/gif", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain"], // Specify allowed file types
+        dataTypes: ["image/jpeg", "image/png", "image/gif", "application/pdf", "text/plain"], // Specify allowed file types
         multiple: true, // Allow multiple files to be dropped
         preventDefaultForUnhandled: true, // Prevent default behavior for unhandled events
     });

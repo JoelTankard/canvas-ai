@@ -56,7 +56,7 @@
 
 <style scoped>
     .chat-input {
-        @apply absolute top-0 left-0 p-4 opacity-0;
+        @apply absolute top-0 left-0 p-4 opacity-0 pointer-events-none;
 
         input {
             @apply p-4 rounded-full rounded-tl-none border border-gray-300 shadow-xl;
