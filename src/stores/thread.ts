@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { create_thread, process_file, process_image } from "src-rust"; // Import the function to create threads and process files
+import { create_thread, check_run, get_message, process_image, process_file } from "src-rust";
 import { useUserPersistedStore } from "@store/user";
 import { ref } from "vue";
 import { useAssistantStore } from "@store/assistant";
@@ -52,25 +52,47 @@ async function processNextFile() {
         const userStore = useUserPersistedStore();
         const assistantStore = useAssistantStore();
         const apiKey = userStore.openaiApiKey;
-        const assistantId = assistantStore.getAssistantByName("Parser")?.id;
+        const assistantId = assistantStore.getAssistantByName("Parser")?.id || "";
 
-        // Use process_file to send the file for processing
-        const response = await process_file(apiKey, fileId, assistantId, thread.id);
+        if (!assistantId) {
+            console.error("Assistant ID not found");
+            return;
+        }
 
-        const parsedResponse = JSON.parse(response);
+        let pollInterval: NodeJS.Timeout | null = null;
 
-        console.log(parsedResponse);
+        // Run the assistant and get the run ID
+        const runId = await process_file(apiKey, fileId, assistantId, thread.id);
 
-        const content = parsedResponse?.choices[0]?.message?.content;
+        // Poll the run status
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+        pollInterval = setInterval(async () => {
+            try {
+                const runStatus = await check_run(apiKey, thread.id, runId);
+                if (runStatus === "completed") {
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                    }
 
-        // Attach response to the file's content key
-        filesStore.updateFileContent(fileId, content);
+                    // Retrieve messages
+                    const messages = await get_message(apiKey, thread.id);
+                    const parsedMessages = JSON.parse(messages);
+                    const content = parsedMessages?.data[0]?.content[0]?.text?.value;
 
-        console.log("File processed successfully:", fileId);
+                    if (content) {
+                        filesStore.updateFileContent(fileId, content);
+                        console.log("File processed successfully:", fileId);
+                        processNextFile();
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to poll run status:", error);
+            }
+        }, 5000); // Poll every 5 seconds
     } catch (error) {
         console.error("Failed to process file:", error);
-    } finally {
-        // Process the next file in the queue
         processNextFile();
     }
 }

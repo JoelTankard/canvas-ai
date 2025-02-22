@@ -1,6 +1,6 @@
 import { defineStore, storeToRefs } from "pinia";
 import { useUserPersistedStore } from "@store/user";
-import { create_message, run_assistant, get_run, list_messages } from "src-rust";
+import { create_message, run_assistant, list_messages } from "src-rust";
 import { useAssistantStore } from "@store/assistant";
 import { useSessionStore } from "@store/session";
 import { useThread } from "@store/thread";
@@ -109,8 +109,8 @@ export const useMessagesStore = defineStore("messages", {
                 const run = JSON.parse(runResponse);
                 sessionStore.setCurrentRunId(sessionId, run.id);
 
-                // Poll for completion
-                await this.pollRunCompletion(sessionId, threadId!);
+                // // Poll for completion
+                // await this.pollRunCompletion(sessionId, threadId!);
 
                 // Get messages after completion
                 const messagesResponse = await list_messages(userStore.openaiApiKey, threadId!);
@@ -132,26 +132,26 @@ export const useMessagesStore = defineStore("messages", {
             }
         },
 
-        async pollRunCompletion(sessionId: string, threadId: string) {
-            const userStore = useUserPersistedStore();
-            const sessionStore = useSessionStore();
-            const session = sessionStore.sessions[sessionId];
+        // async pollRunCompletion(sessionId: string, threadId: string) {
+        //     const userStore = useUserPersistedStore();
+        //     const sessionStore = useSessionStore();
+        //     const session = sessionStore.sessions[sessionId];
 
-            if (!session?.currentRunId || !threadId) return;
+        //     if (!session?.currentRunId || !threadId) return;
 
-            while (true) {
-                const runResponse = await get_run(userStore.openaiApiKey!, threadId, session.currentRunId);
-                const run = JSON.parse(runResponse);
+        //     while (true) {
+        //         const runResponse = await get_run(userStore.openaiApiKey!, threadId, session.currentRunId);
+        //         const run = JSON.parse(runResponse);
 
-                if (run.status === "completed") {
-                    break;
-                } else if (run.status === "failed" || run.status === "cancelled") {
-                    throw new Error(`Run ${run.status}`);
-                }
+        //         if (run.status === "completed") {
+        //             break;
+        //         } else if (run.status === "failed" || run.status === "cancelled") {
+        //             throw new Error(`Run ${run.status}`);
+        //         }
 
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-        },
+        //         await new Promise((resolve) => setTimeout(resolve, 1000));
+        //     }
+        // },
 
         addStep(sessionId: string, tool: string): Step {
             const step: Step = {
