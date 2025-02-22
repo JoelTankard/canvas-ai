@@ -14,7 +14,7 @@
         </ZoomView>
         <ChatInput />
         <Upload :canvasRefs="canvasRefs" />
-        <Chat />
+        <!-- <Chat /> -->
     </div>
 </template>
 

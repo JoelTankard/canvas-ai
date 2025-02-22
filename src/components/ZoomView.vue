@@ -1,5 +1,6 @@
 <template>
     <div ref="zoomView" class="zoom-view">
+        <div class="dot-grid"></div>
         <slot />
     </div>
 </template>
@@ -37,8 +38,16 @@
 
 <style scoped>
     .zoom-view {
-        /* width: 100%;
-        height: 100%;
-        overflow: hidden; */
+        @apply relative w-screen h-screen;
+    }
+
+    .dot-grid {
+        @apply absolute inset-0 -z-10;
+        background-image: radial-gradient(circle at 2px 2px, rgb(203 213 225) 2px, transparent 0);
+        background-size: 40px 40px;
+        width: 5000vw;
+        height: 5000vh;
+        left: -2500vw;
+        top: -2500vh;
     }
 </style>
