@@ -6,6 +6,8 @@ import * as convoAgent from "@agents/Convo";
 import { useFilesStore } from "./files";
 import * as funcAgent from "@agents/Function";
 import * as textGenAgent from "@agents/TextGen";
+import { usePlanningInteractionStore } from "@store/PlanInteraction";
+import { useMessagesStore } from "@store/messages";
 
 export interface SessionState {
     id: string;
@@ -54,7 +56,8 @@ export const useSessionStore = defineStore("session", {
 
         addMessage(sessionId: string, message: string) {
             const messageStore = useMessagesStore();
-            messageStore.addMessage(sessionId, message, "user");
+            const step = messageStore.addStep(sessionId, "user_input");
+            messageStore.addMessage(sessionId, message, "user", "display", step);
         },
 
         async initializeSession() {
@@ -84,6 +87,14 @@ export const useSessionStore = defineStore("session", {
             // const intent = await textGenAgent.userIntent(sessionId).generate(message);
 
             if (getIntent.can_get_intent === "yes" && getIntent.intent) {
+                const planningStore = usePlanningInteractionStore();
+                const interaction = planningStore.createInteraction(message, getIntent.intent, sessionId);
+
+                // Get anxious critique about potential failures
+                const anxiousCritique = await textGenAgent.anxiousCritique(sessionId).generate(getIntent.intent);
+                console.log(anxiousCritique);
+                planningStore.addPlanIteration(interaction.id, "Initial Plan", anxiousCritique);
+
                 await convoAgent.notifyPlanning(sessionId, getIntent.intent).interact(message, "display");
                 return;
             }

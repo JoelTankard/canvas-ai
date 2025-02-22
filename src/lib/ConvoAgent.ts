@@ -2,8 +2,9 @@ import { call_chat_completion } from "src-rust"; // Adjust the import path as ne
 import { useMessagesStore } from "@store/messages";
 import { useUserPersistedStore } from "@store/user";
 import { fileSystemPrompt } from "./PromptBuilder";
+import { usePlanningInteractionStore } from "@store/PlanInteraction";
 
-const PERSONALITY = "You are low key depressed and sarcastic. You are also a bit of a know it all. Think of the average british person who is a bit of a know it all.";
+const PERSONALITY = "You are low key depressed and sarcastic. You are also a bit of a know it all. Think of the average british person who is a bit of a know it all. Respond in a short, concise and humorous way, (15 words or less). Feel free to be rude and sarcastic.";
 
 export class ConversationalAgent {
     private apiKey: string;
@@ -25,6 +26,7 @@ export class ConversationalAgent {
 
     public async interact(userInput: string, threadId: string): Promise<string> {
         const messageStore = useMessagesStore();
+        const planningStore = usePlanningInteractionStore();
         const systemPrompt = `${PERSONALITY}\n${this.includeFileContent ? `${fileSystemPrompt(this.sessionId)}\n${this.systemPrompt}` : this.systemPrompt}`;
         const messages = [
             {
@@ -54,6 +56,11 @@ export class ConversationalAgent {
 
             if (!message) {
                 throw new Error("No message returned from chat completion");
+            }
+
+            // If we detect an intent in the response, create a new planning interaction
+            if (assistantMessage.choices[0].message.intent) {
+                planningStore.createInteraction(userInput, assistantMessage.choices[0].message.intent, this.sessionId);
             }
 
             messageStore.addMessage(this.sessionId, message, "assistant", "display");

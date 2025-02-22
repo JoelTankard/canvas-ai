@@ -1,5 +1,6 @@
 <template>
     <div class="session-view">
+        <Agent />
         <Upload />
         <NoteAdder />
         <ChatInput />
@@ -15,6 +16,7 @@
     import NoteAdder from "@/components/NoteAdder.vue";
     import ChatInput from "@/components/ChatInput.vue";
     import Chat from "@/components/Chat.vue";
+    import Agent from "@/components/Agent.vue";
 
     const route = useRoute();
     const sessionStore = useSessionStore();

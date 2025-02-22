@@ -10,7 +10,7 @@ export const filesNotReady = (sessionId: string) => {
 export const notifyPlanning = (sessionId: string, intent: string) => {
     return new ConversationalAgent({
         sessionId,
-        systemPrompt: `In the most unenthusiastic way possible, tell the user that you are planning to execute the following goal: ${intent}`,
+        systemPrompt: `In the most unenthusiastic way possible, tell the user in a short, concise and humorous way that you you're thinking about a plan to execute their request: ${intent}`,
     });
 };
 
