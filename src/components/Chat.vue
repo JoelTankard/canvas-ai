@@ -1,9 +1,8 @@
 <script setup lang="ts">
-    import { ref, watch, computed } from "vue";
+    import { ref, watch, computed, onMounted } from "vue";
     import { useMessagesStore } from "@store/messages";
     import { useSessionStore } from "@store/session";
     import { useRoute } from "vue-router";
-    import { Button } from "@ui";
 
     const messageStore = useMessagesStore();
     const sessionStore = useSessionStore();
@@ -11,7 +10,7 @@
 
     const currentSession = computed(() => sessionStore.sessions[route.params.id as string]);
 
-    const messages = computed(() => messageStore.getMessagesBySessionId(currentSession.value!.id));
+    const messages = computed(() => messageStore.getDisplayMessages(currentSession.value!.id));
     const chatContainer = ref<HTMLDivElement>();
     const fileInput = ref<HTMLInputElement>();
 
@@ -32,6 +31,10 @@
         },
         { deep: true }
     );
+
+    onMounted(() => {
+        scrollToBottom();
+    });
 </script>
 
 <template>

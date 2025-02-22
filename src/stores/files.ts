@@ -94,12 +94,17 @@ export const useFilesStore = defineStore(
             }
         }
 
+        function allFilesProcessed(sessionId: string) {
+            return files.value.filter((file) => file.sessionId === sessionId).every((file) => file.content !== "");
+        }
+
         return {
             files,
             uploadFile,
             clearFiles,
             getFileById,
             updateFileContent,
+            allFilesProcessed,
             getFilesBySessionId,
         };
     },

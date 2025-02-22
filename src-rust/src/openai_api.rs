@@ -441,3 +441,70 @@ pub async fn get_message(api_key: &str, thread_id: &str) -> Result<String, JsVal
 
     Ok(text)
 }
+
+#[wasm_bindgen]
+pub async fn call_structured_output(
+    api_key: &str,
+    prompt: &str,
+    model: &str,
+    schema: &str,
+    max_tokens: u32,
+) -> Result<JsValue, JsValue> {
+    let client = Client::new();
+    let response = client
+        .post(&format!("{}/structured-outputs", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "model": model,
+            "prompt": prompt,
+            "schema": schema,
+            "max_tokens": max_tokens
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(JsValue::from_str(&text))
+}
+
+#[wasm_bindgen]
+pub async fn call_function_calling(
+    api_key: &str,
+    prompt: &str,
+    model: &str,
+    tools: &str,
+    max_tokens: u32,
+) -> Result<JsValue, JsValue> {
+    let client = Client::new();
+    let tools: Vec<serde_json::Value> =
+        serde_json::from_str(tools).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let response = client
+        .post(&format!("{}/chat/completions", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "model": model,
+            "messages": [{
+                "role": "user",
+                "content": prompt
+            }],
+            "tools": tools,
+            "max_tokens": max_tokens
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(JsValue::from_str(&text))
+}

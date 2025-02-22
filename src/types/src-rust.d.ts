@@ -11,4 +11,5 @@ declare module "src-rust" {
     export function process_image(api_key: string, image_data: string, is_url: boolean): Promise<string>;
     export function check_run(api_key: string, thread_id: string, run_id: string): Promise<string>;
     export function get_message(api_key: string, thread_id: string): Promise<string>;
+    export function call_chat_completion(api_key: string, messages: string, model: string): Promise<string>;
 }

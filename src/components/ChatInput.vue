@@ -6,13 +6,13 @@
 
 <script setup lang="ts">
     import { ref, computed, watch, nextTick } from "vue";
-    import { useMouse, useMagicKeys } from "@vueuse/core";
+    import { useMouse, useMagicKeys, usePageLeave } from "@vueuse/core";
     import { useSessionStore } from "@/stores/session";
     import { useRoute } from "vue-router";
-    const { slash } = useMagicKeys();
+    const { slash, esc } = useMagicKeys();
     const inputRef = ref<HTMLInputElement>();
     const { x, y } = useMouse();
-
+    const isLeft = usePageLeave();
     const sessionStore = useSessionStore();
     const route = useRoute();
 
@@ -36,7 +36,7 @@
     function sendMessage() {
         if (!message.value.trim() || currentSession?.isInputLocked) return;
 
-        sessionStore.addMessage(currentSessionId.value, message.value);
+        sessionStore.userInput(currentSessionId.value, message.value);
         message.value = "";
 
         inputRef.value?.blur();
@@ -44,10 +44,13 @@
 
     watch(slash, (value) => {
         if (value) {
-            isFocused.value = true;
-
-            inputRef.value?.focus();
-
+            if (isFocused.value) {
+                isFocused.value = false;
+                inputRef.value?.blur();
+            } else {
+                isFocused.value = true;
+                inputRef.value?.focus();
+            }
             setTimeout(() => {
                 if (message.value.endsWith("/")) {
                     setTimeout(() => {
@@ -57,11 +60,25 @@
             }, 1);
         }
     });
+
+    watch(esc, (value) => {
+        if (value) {
+            isFocused.value = false;
+            inputRef.value?.blur();
+        }
+    });
+
+    watch(isLeft, (value) => {
+        if (value) {
+            isFocused.value = false;
+            inputRef.value?.blur();
+        }
+    });
 </script>
 
 <style scoped>
     .chat-input {
-        @apply absolute top-0 left-0 p-4 opacity-0 pointer-events-none;
+        @apply fixed top-0 left-0 p-4 opacity-0 pointer-events-none;
 
         input {
             @apply p-4 rounded-full rounded-tl-none border border-gray-300 shadow-xl;

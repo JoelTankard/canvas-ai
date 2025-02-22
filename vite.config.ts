@@ -49,6 +49,10 @@ export default defineConfig({
             "@store": fileURLToPath(new URL("./src/stores", import.meta.url)),
             "@store/*": fileURLToPath(new URL("./src/stores", import.meta.url)),
             "@ui/*": fileURLToPath(new URL("./src/components/ui", import.meta.url)),
+            "@agents": fileURLToPath(new URL("./src/agents", import.meta.url)),
+            "@agents/*": fileURLToPath(new URL("./src/agents", import.meta.url)),
+            "@lib": fileURLToPath(new URL("./src/lib", import.meta.url)),
+            "@lib/*": fileURLToPath(new URL("./src/lib", import.meta.url)),
         },
     },
 });

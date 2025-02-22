@@ -46,91 +46,104 @@ export const useMessagesStore = defineStore("messages", {
     },
 
     actions: {
-        async addMessage(sessionId: string, content: string, role: MessageRole, step?: Step) {
-            const sessionStore = useSessionStore();
-            const threadStore = useThread();
-            const filesStore = useFilesStore();
-            let fileIds: string[] = [];
-            const threadId = threadStore.threads.find((t) => t.name === "user-thread-id" && t.sessionId === sessionId)?.id;
-            const isFirstMessage = this.messages.findIndex((m) => m.threadId === threadId) === -1;
-            if (isFirstMessage) {
-                fileIds = filesStore.getFilesBySessionId(sessionId).map((f) => f.id);
-            }
-            console.log(sessionId);
-            const session = sessionStore.getSessionById(sessionId);
-            console.log(session);
-
-            if (!session) {
-                throw new Error("Invalid session");
-            }
-
-            if (!threadId) {
-                throw new Error("Thread ID not found");
-            }
-
+        addMessage(sessionId: string, content: string, role: MessageRole, threadId: string, step?: Step) {
             const message: Message = {
                 id: crypto.randomUUID(),
                 sessionId,
                 content,
                 role,
                 timestamp: Date.now(),
-                fileIds: fileIds || [],
-                threadId: threadId || "",
+                fileIds: [],
+                threadId,
                 step,
             };
             this.messages.push(message);
-
-            if (role === "user") {
-                await this.sendMessageToAssistant(content, sessionId, threadId, fileIds);
-            }
         },
+        // async addMessage(sessionId: string, content: string, role: MessageRole, step?: Step) {
+        //     const sessionStore = useSessionStore();
+        //     const threadStore = useThread();
+        //     const filesStore = useFilesStore();
+        //     let fileIds: string[] = [];
+        //     const threadId = threadStore.threads.find((t) => t.name === "user-thread-id" && t.sessionId === sessionId)?.id;
+        //     const isFirstMessage = this.messages.findIndex((m) => m.threadId === threadId) === -1;
+        //     if (isFirstMessage) {
+        //         fileIds = filesStore.getFilesBySessionId(sessionId).map((f) => f.id);
+        //     }
+        //     console.log(sessionId);
+        //     const session = sessionStore.getSessionById(sessionId);
+        //     console.log(session);
 
-        async sendMessageToAssistant(content: string, sessionId: string, threadId: string, fileIds: string[]) {
-            const userStore = await useUserPersistedStore();
-            const sessionStore = useSessionStore();
-            const assistantStore = useAssistantStore();
-            const session = sessionStore.sessions[sessionId];
+        //     if (!session) {
+        //         throw new Error("Invalid session");
+        //     }
 
-            if (!userStore.openaiApiKey) throw new Error("API key not found");
-            if (!session) throw new Error("Invalid session");
+        //     if (!threadId) {
+        //         throw new Error("Thread ID not found");
+        //     }
 
-            try {
-                sessionStore.setAgentTyping(sessionId, true);
+        //     const message: Message = {
+        //         id: crypto.randomUUID(),
+        //         sessionId,
+        //         content,
+        //         role,
+        //         timestamp: Date.now(),
+        //         fileIds: fileIds || [],
+        //         threadId: threadId || "",
+        //         step,
+        //     };
+        //     this.messages.push(message);
 
-                // Get the default assistant
-                const assistant = assistantStore.getAssistantByName("Parser");
-                if (!assistant) throw new Error("No assistant available");
+        //     if (role === "user") {
+        //         await this.sendMessageToAssistant(content, sessionId, threadId, fileIds);
+        //     }
+        // },
 
-                // Create message in thread
-                await create_message(userStore.openaiApiKey, threadId!, content, JSON.stringify(fileIds));
+        // async sendMessageToAssistant(content: string, sessionId: string, threadId: string, fileIds: string[]) {
+        //     const userStore = await useUserPersistedStore();
+        //     const sessionStore = useSessionStore();
+        //     const assistantStore = useAssistantStore();
+        //     const session = sessionStore.sessions[sessionId];
 
-                // Run the assistant
-                const runResponse = await run_assistant(userStore.openaiApiKey, threadId!, assistant.id, null);
-                const run = JSON.parse(runResponse);
-                sessionStore.setCurrentRunId(sessionId, run.id);
+        //     if (!userStore.openaiApiKey) throw new Error("API key not found");
+        //     if (!session) throw new Error("Invalid session");
 
-                // // Poll for completion
-                // await this.pollRunCompletion(sessionId, threadId!);
+        //     try {
+        //         sessionStore.setAgentTyping(sessionId, true);
 
-                // Get messages after completion
-                const messagesResponse = await list_messages(userStore.openaiApiKey, threadId!);
-                const messages = JSON.parse(messagesResponse);
+        //         // Get the default assistant
+        //         const assistant = assistantStore.getAssistantByName("Parser");
+        //         if (!assistant) throw new Error("No assistant available");
 
-                // Add the assistant's response
-                const assistantMessage = messages.data.find((m: AssistantMessage) => m.role === "assistant" && m.run_id === session.currentRunId);
+        //         // Create message in thread
+        //         await create_message(userStore.openaiApiKey, threadId!, content, JSON.stringify(fileIds));
 
-                if (assistantMessage?.content[0]?.text?.value) {
-                    await this.addMessage(sessionId, assistantMessage.content[0].text.value, "assistant", assistantMessage.file_ids);
-                }
-            } catch (error) {
-                console.error("Failed to send message to assistant:", error);
-                const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-                await this.addMessage(sessionId, `Error: ${errorMessage}. Please try again.`, "assistant");
-            } finally {
-                sessionStore.setAgentTyping(sessionId, false);
-                sessionStore.setCurrentRunId(sessionId, null);
-            }
-        },
+        //         // Run the assistant
+        //         const runResponse = await run_assistant(userStore.openaiApiKey, threadId!, assistant.id, null);
+        //         const run = JSON.parse(runResponse);
+        //         sessionStore.setCurrentRunId(sessionId, run.id);
+
+        //         // // Poll for completion
+        //         // await this.pollRunCompletion(sessionId, threadId!);
+
+        //         // Get messages after completion
+        //         const messagesResponse = await list_messages(userStore.openaiApiKey, threadId!);
+        //         const messages = JSON.parse(messagesResponse);
+
+        //         // Add the assistant's response
+        //         const assistantMessage = messages.data.find((m: AssistantMessage) => m.role === "assistant" && m.run_id === session.currentRunId);
+
+        //         if (assistantMessage?.content[0]?.text?.value) {
+        //             await this.addMessage(sessionId, assistantMessage.content[0].text.value, "assistant", assistantMessage.file_ids);
+        //         }
+        //     } catch (error) {
+        //         console.error("Failed to send message to assistant:", error);
+        //         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        //         await this.addMessage(sessionId, `Error: ${errorMessage}. Please try again.`, "assistant");
+        //     } finally {
+        //         sessionStore.setAgentTyping(sessionId, false);
+        //         sessionStore.setCurrentRunId(sessionId, null);
+        //     }
+        // },
 
         // async pollRunCompletion(sessionId: string, threadId: string) {
         //     const userStore = useUserPersistedStore();
@@ -175,6 +188,10 @@ export const useMessagesStore = defineStore("messages", {
 
         getMessagesBySessionId(sessionId: string, threadName = "user-thread-id") {
             return this.messages.filter((m) => m.sessionId === sessionId && m.threadId === threadName);
+        },
+
+        getDisplayMessages(sessionId: string) {
+            return this.messages.filter((m) => m.sessionId === sessionId && m.threadId === "display");
         },
     },
     persist: true,

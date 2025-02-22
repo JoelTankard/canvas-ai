@@ -1,3 +1,3 @@
 [RSW::OK]
 [RSW::NAME] :~> src-rust
-[RSW::PATH] :~> /Users/joel/Dev/hack-ai-agent/src-rust/Cargo.toml
+[RSW::PATH] :~> /Users/joel/Dev/hack-ai-agent/src-rust/src/openai_api.rs

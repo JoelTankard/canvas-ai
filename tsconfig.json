@@ -6,7 +6,11 @@
             "@ui/*": ["./src/components/ui/*"],
             "@ui": ["./src/components/ui"],
             "@store/*": ["./src/stores/*"],
-            "@store": ["./src/stores"]
+            "@store": ["./src/stores"],
+            "@agents/*": ["./src/agents/*"],
+            "@agents": ["./src/agents"],
+            "@lib/*": ["./src/lib/*"],
+            "@lib": ["./src/lib"]
         },
         "target": "ES2020",
         "useDefineForClassFields": true,
