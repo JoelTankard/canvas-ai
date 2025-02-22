@@ -3,23 +3,26 @@
         <AgentPointer />
 
         <ZoomView>
-            <Agent />
-            <NoteAdder />
+            <!-- <NoteAdder /> -->
             <!-- Create a canvas for each file -->
             <template v-for="file in sessionFiles" :key="file.id">
-                <CanvasObject :ref="(el) => (canvasRefs[file.id] = el)" :position="filePositions[file.id]">
-                    <FileObject :file="file" @positionUpdate="(x, y) => updateFilePosition(file.id, x, y)" />
+                <CanvasObject :ref="(el: any) => (canvasRefs[file.id] = el)" :position="file.position">
+                    <FileObject :file="file" @positionUpdate="(x: number, y: number) => updateFilePosition(file.id, x, y)" />
                 </CanvasObject>
             </template>
+            <Agent />
         </ZoomView>
+        <LatestPlanInteraction />
+
         <ChatInput />
-        <Upload :canvasRefs="canvasRefs" />
+        <Upload />
         <!-- <Chat /> -->
     </div>
 </template>
 
 <script setup lang="ts">
     import { onMounted, ref, computed } from "vue";
+    import type { RouteLocationNormalizedLoaded } from "vue-router";
     import { useRoute } from "vue-router";
     import { useSessionStore } from "@store/session";
     import { useFilesStore } from "@store/files";
@@ -32,14 +35,13 @@
     import CanvasObject from "@/components/CanvasObject.vue";
     import FileObject from "@/components/FileObject.vue";
     import AgentPointer from "@/components/AgentPointer.vue";
-
+    import LatestPlanInteraction from "@/components/LatestPlanInteraction.vue";
     const route = useRoute();
     const sessionStore = useSessionStore();
     const filesStore = useFilesStore();
 
-    // Track canvas refs and positions
+    // Track canvas refs
     const canvasRefs = ref<Record<string, typeof CanvasObject>>({});
-    const filePositions = ref<Record<string, { x: number; y: number }>>({});
 
     // Get files for current session
     const sessionFiles = computed(() => {
@@ -49,7 +51,7 @@
 
     // Update file position
     const updateFilePosition = (fileId: string, x: number, y: number) => {
-        filePositions.value[fileId] = { x, y };
+        filesStore.updateFilePosition(fileId, x, y);
     };
 
     onMounted(async () => {

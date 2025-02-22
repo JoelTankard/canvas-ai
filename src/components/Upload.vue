@@ -1,11 +1,11 @@
 <template>
-    <div class="fixed inset-0 pointer-events-auto" @dragenter.prevent @dragover.prevent>
-        <div ref="dropZoneRef" class="w-full h-full transition-opacity duration-300 flex items-center justify-center" :class="[isOverDropZone ? 'opacity-100 bg-blue-500/20' : 'opacity-0']" @dragenter.prevent @dragover.prevent @drop.prevent="handleDrop" @dragleave.prevent>
+    <div class="fixed inset-0 file-dropper">
+        <div ref="dropZoneRef" class="w-full h-full transition-opacity duration-300 flex items-center justify-center" @drop.prevent="handleDrop">
             <div class="text-2xl font-semibold text-blue-700">Drop files here</div>
         </div>
 
         <!-- File status list -->
-        <div class="absolute top-4 left-4 z-50">
+        <div class="absolute top-4 left-4 z-50 pointer-events-auto">
             <ul class="space-y-2">
                 <li v-for="file in sessionFiles" :key="file.name" class="flex items-center gap-2">
                     <span class="text-gray-700">{{ file.name }}</span>
@@ -64,11 +64,9 @@
             Promise.all(
                 Array.from(droppedFiles).map(async (file) => {
                     try {
-                        const fileId = await filesStore.uploadFile(file, currentSession.value.id);
+                        const fileId = await filesStore.uploadFile(file, currentSession.value.id, { x: dropX, y: dropY });
                         // Remove from pending once uploaded
                         pendingFiles.value = pendingFiles.value.filter((f) => f.name !== file.name);
-                        // Update file position in canvas
-                        props.canvasRef?.updateFilePosition(fileId, dropX, dropY);
                         return fileId;
                     } catch (error) {
                         console.error(`Failed to upload file ${file.name}:`, error);
@@ -114,6 +112,12 @@
     });
 </script>
 
-<style scoped>
-    /* No additional styles needed as Tailwind CSS is used */
+<style lang="scss">
+    .file-dropper {
+        @apply bg-blue-500/20 pointer-events-none z-50 border-8 border-blue-500 opacity-0 transition-opacity duration-300;
+    }
+
+    .file-drag .file-dropper {
+        @apply opacity-100 pointer-events-auto;
+    }
 </style>

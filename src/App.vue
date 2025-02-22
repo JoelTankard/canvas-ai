@@ -1,8 +1,10 @@
 <template>
-    <main class="main">
+    <main class="main" ref="dropZoneRef" :class="{ 'file-drag': isOverDropZone }">
         <OpenAIDialog />
         <!-- <DebugAssistants /> -->
-        <router-view></router-view>
+
+        <router-view class="w-full relative"></router-view>
+
         <SessionTabs />
     </main>
 </template>
@@ -11,8 +13,14 @@
     import OpenAIDialog from "@/components/OpenAIDialog.vue";
     import DebugAssistants from "@/components/DebugAssistants.vue";
     import SessionTabs from "@/components/SessionTabs.vue";
-
+    import { ref } from "vue";
+    import { useDropZone } from "@vueuse/core";
     // import { greet, fetch_geolocation } from "src-rust";
+
+    const dropZoneRef = ref<HTMLElement>();
+    const { isOverDropZone } = useDropZone(dropZoneRef, {
+        onDrop: () => {},
+    });
 
     // const greetMsg = ref("");
     // const geoInfo = ref("");
@@ -25,7 +33,7 @@
     // }
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
     .main {
         @apply bg-zinc-100 h-screen w-screen overflow-hidden;
     }

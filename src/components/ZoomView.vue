@@ -7,13 +7,13 @@
 
 <script setup lang="ts">
     import { ref, onMounted } from "vue";
-    import panzoom from "panzoom";
+    import Panzoom from "panzoom";
 
     const zoomView = ref<HTMLDivElement | null>(null);
 
     onMounted(() => {
         if (zoomView.value) {
-            const instance = panzoom(zoomView.value, {
+            const instance = Panzoom(zoomView.value, {
                 beforeWheel: (e: WheelEvent) => {
                     // Only allow zooming with Ctrl/Cmd key pressed
                     const isZoomEvent = e.ctrlKey || e.metaKey;
@@ -42,7 +42,7 @@
     }
 
     .dot-grid {
-        @apply absolute inset-0 -z-10;
+        @apply absolute inset-0  pointer-events-none;
         background-image: radial-gradient(circle at 2px 2px, rgb(203 213 225) 2px, transparent 0);
         background-size: 40px 40px;
         width: 5000vw;

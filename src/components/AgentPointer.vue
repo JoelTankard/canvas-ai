@@ -1,11 +1,11 @@
 <template>
-    <div class="agent-pointer-wrapper" :style="pointerStyle">
-        <div class="last-agent-message">
+    <div :class="['agent-pointer-wrapper', { 'in-view': isView }]" :style="pointerStyle">
+        <div class="last-agent-message" v-if="lastAgentMessage">
             <div class="last-agent-message-inner">
                 <p>{{ lastAgentMessage }}</p>
             </div>
         </div>
-        <div class="agent-pointer">
+        <div :class="['agent-pointer']">
             <div class="agent-image">
                 <img src="@/assets/small-agent.png" alt="Agent" />
             </div>
@@ -92,7 +92,7 @@
         const inViewDuration = 0.1; // Fast follow when in view
         const outOfViewDuration = Math.max(1, Math.min(3, 1 + 0.8 * zoomTransform.value.scale)); // Slow for edge pointing
 
-        const transitionDuration = inView ? inViewDuration : outOfViewDuration;
+        const transitionDuration = outOfViewDuration; // inView ? inViewDuration : outOfViewDuration;
 
         let transform;
         if (inView) {
@@ -107,8 +107,8 @@
         return {
             "--pointer-angle": `${angle}deg`,
             transform,
-            opacity: inView ? 0 : 1,
-            transition: `transform ${transitionDuration}s ease-out, opacity 0.2s ease-out`,
+            // opacity: inView ? 0.5 : 1,
+            transition: `transform ${transitionDuration}s ease-out, opacity 0.1s ease-out`,
         };
     });
 
@@ -126,34 +126,49 @@
             transition: `transform ${inView ? inViewDuration : outOfViewDuration}s ease-out`,
         };
     });
+
+    const isView = computed(() => {
+        return isInViewport(agentPosition.value.x, agentPosition.value.y);
+    });
 </script>
 
 <style lang="scss" scoped>
     .agent-pointer-wrapper {
         @apply fixed pointer-events-none h-16 w-16  flex items-center justify-center;
         z-index: 1000;
-    }
-    img {
-        @apply w-full h-full object-contain;
-    }
 
-    .agent-pointer {
-        @apply absolute inset-0 flex items-center justify-end origin-center;
-    }
+        img {
+            @apply w-full h-full object-contain;
+        }
 
-    .agent-image {
-        @apply absolute inset-0;
-    }
+        .agent-pointer {
+            @apply absolute inset-0 flex items-center justify-end origin-center transition-opacity duration-300;
+        }
 
-    .agent-pointer-inner {
-        @apply flex items-end justify-center absolute -m-8;
-    }
+        .agent-image {
+            @apply absolute inset-0;
+        }
 
-    .last-agent-message {
-        @apply absolute bottom-0 left-0 flex items-start justify-start w-auto min-w-64 max-w-screen-sm mb-16 ml-8;
+        .agent-pointer-inner {
+            @apply flex items-end justify-center absolute -m-8;
+        }
 
-        .last-agent-message-inner {
-            @apply w-full bg-white rounded-xl rounded-bl-sm p-4 shadow-xl inline-block w-full;
+        .last-agent-message {
+            @apply absolute bottom-0 left-0 flex items-start justify-start w-auto min-w-64 max-w-screen-sm mb-16 ml-8 transition-transform duration-300;
+
+            .last-agent-message-inner {
+                @apply w-full bg-white rounded-xl rounded-bl-sm p-4 shadow-xl inline-block w-full;
+            }
+        }
+
+        &.in-view {
+            .agent-pointer {
+                opacity: 0;
+            }
+
+            .last-agent-message {
+                @apply translate-y-64 translate-x-64;
+            }
         }
     }
 </style>

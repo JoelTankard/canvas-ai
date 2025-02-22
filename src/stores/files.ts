@@ -14,8 +14,10 @@ export interface UploadedFile {
     size: number;
     file: File;
     content: string;
+    preview?: string;
     createdAt: Date;
     error: string | null;
+    position?: { x: number; y: number };
 }
 
 export const useFilesStore = defineStore(
@@ -23,7 +25,7 @@ export const useFilesStore = defineStore(
     () => {
         const files = ref<UploadedFile[]>([]);
 
-        async function uploadFile(file: File, sessionId: string): Promise<string> {
+        async function uploadFile(file: File, sessionId: string, position?: { x: number; y: number }): Promise<string> {
             const userStore = await useUserPersistedStore();
             const openaiApiKey = userStore.openaiApiKey;
 
@@ -41,6 +43,16 @@ export const useFilesStore = defineStore(
                 const uploadResponse = await upload_file(openaiApiKey, uint8Array, file.name);
                 const uploadResult = JSON.parse(uploadResponse);
 
+                // Create a preview for the file
+                let preview: string | undefined;
+                if (file.type.startsWith("image/")) {
+                    preview = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.readAsDataURL(file);
+                    });
+                }
+
                 const uploadedFile: UploadedFile = {
                     id: uploadResult.id,
                     sessionId: sessionId,
@@ -49,20 +61,17 @@ export const useFilesStore = defineStore(
                     size: file.size,
                     file: file,
                     content: "",
+                    preview,
                     createdAt: new Date(),
                     error: null,
+                    position,
                 };
 
                 files.value.push(uploadedFile);
 
                 // Add the file to the appropriate queue
                 if (file.type.startsWith("image/")) {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64String = reader.result as string;
-                        addImageToQueue(uploadedFile.id, base64String, sessionId);
-                    };
-                    reader.readAsDataURL(file);
+                    addImageToQueue(uploadedFile.id, preview!, sessionId);
                 } else {
                     addFileToQueue(uploadedFile.id, sessionId);
                 }
@@ -91,6 +100,14 @@ export const useFilesStore = defineStore(
             const file = getFileById(id);
             if (file) {
                 file.content = content;
+            }
+        }
+
+        function updateFilePosition(id: string, x: number, y: number) {
+            console.log("Updating position for file", id, "to", x, y);
+            const file = getFileById(id);
+            if (file) {
+                file.position = { x, y };
             }
         }
 
@@ -124,11 +141,50 @@ export const useFilesStore = defineStore(
             clearFiles,
             getFileById,
             updateFileContent,
+            updateFilePosition,
             allFilesProcessed,
             getFilesBySessionId,
         };
     },
     {
-        persist: true,
+        persist: {
+            key: "files-store",
+            storage: localStorage,
+            serializer: {
+                deserialize: (value) => {
+                    const parsed = JSON.parse(value);
+                    if (parsed.files) {
+                        parsed.files = parsed.files.map((file: any) => ({
+                            ...file,
+                            createdAt: new Date(file.createdAt),
+                            // Keep preview and position data
+                            preview: file.preview,
+                            position: file.position,
+                            // File object can't be restored, but we can create a minimal version
+                            file: file.type.startsWith("image/") && file.preview ? new File([new Blob([])], file.name, { type: file.type }) : new File([new Blob([])], file.name),
+                        }));
+                    }
+                    return parsed;
+                },
+                serialize: (value) => {
+                    const toStore = {
+                        ...value,
+                        files: value.files.map((file: UploadedFile) => ({
+                            id: file.id,
+                            sessionId: file.sessionId,
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            content: file.content,
+                            preview: file.preview,
+                            createdAt: file.createdAt.toISOString(),
+                            error: file.error,
+                            position: file.position,
+                        })),
+                    };
+                    return JSON.stringify(toStore);
+                },
+            },
+        },
     }
 );

@@ -84,22 +84,19 @@
 
     // Dimensions state
     const dimensions = ref({ width: 300, height: 400 }); // Default dimensions
-    const objectUrl = ref("");
-
-    // Create object URL for the file
-    onMounted(() => {
-        // Skip creating object URL if file isn't available or content is already processed
-        if (props.file.content) {
-            return;
+    const objectUrl = computed(() => {
+        if (isImage.value && props.file.preview) {
+            return props.file.preview;
         }
         if (props.file.file instanceof File) {
-            objectUrl.value = URL.createObjectURL(props.file.file);
+            return URL.createObjectURL(props.file.file);
         }
+        return "";
     });
 
-    // Clean up object URL
+    // Clean up object URL only if it's not a preview URL
     onUnmounted(() => {
-        if (objectUrl.value) {
+        if (objectUrl.value && !props.file.preview) {
             URL.revokeObjectURL(objectUrl.value);
         }
     });
