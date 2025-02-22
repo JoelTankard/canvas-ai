@@ -153,18 +153,18 @@ pub async fn upload_file(
     filename: &str,
 ) -> Result<String, JsValue> {
     let client = Client::new();
-    let base64_data = BASE64.encode(file_data);
+    let form = reqwest::multipart::Form::new()
+        .part(
+            "file",
+            reqwest::multipart::Part::bytes(file_data.to_vec()).file_name(filename.to_string()),
+        )
+        .text("purpose", "assistants");
 
     let response = client
         .post(&format!("{}/files", BASE_URL))
         .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
         .header("OpenAI-Beta", "assistants=v2")
-        .json(&json!({
-            "file": base64_data,
-            "purpose": "assistants",
-            "name": filename
-        }))
+        .multipart(form)
         .send()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;

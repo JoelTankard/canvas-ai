@@ -48,7 +48,22 @@ const analyseFiles = async (documents: UploadedDocument[]) => {
                             // For other files, upload and analyze
                             const buffer = await document.file.arrayBuffer();
                             const uint8Array = new Uint8Array(buffer);
-                            const uploadResponse = await upload_file(openaiApiKey, uint8Array, document.name);
+
+                            // Create multipart form-data boundary
+                            const boundary = "----WebKitFormBoundary" + Math.random().toString(36).slice(2);
+                            const formDataHeader = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${document.name}"\r\nContent-Type: ${document.type}\r\n\r\n`;
+                            const formDataFooter = `\r\n--${boundary}--\r\n`;
+
+                            // Combine the header, file data, and footer
+                            const headerArray = new TextEncoder().encode(formDataHeader);
+                            const footerArray = new TextEncoder().encode(formDataFooter);
+
+                            const combinedArray = new Uint8Array(headerArray.length + uint8Array.length + footerArray.length);
+                            combinedArray.set(headerArray, 0);
+                            combinedArray.set(uint8Array, headerArray.length);
+                            combinedArray.set(footerArray, headerArray.length + uint8Array.length);
+
+                            const uploadResponse = await upload_file(openaiApiKey, combinedArray, document.name);
                             const uploadResult = JSON.parse(uploadResponse);
                             document.openaiFileId = uploadResult.id;
 
