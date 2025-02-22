@@ -4,7 +4,7 @@
             <div class="flex items-center justify-center text-gray-500 h-full">Drop files here</div>
         </div>
         <ul class="mt-4">
-            <li v-for="file in sessionFiles" :key="file.name" class="text-gray-700">{{ file.name }} - {{ file.content }}</li>
+            <li v-for="file in sessionFiles" :key="file.name" class="text-gray-700">{{ file.name }} - {{ !file.content ? "processing..." : "ready" }}</li>
         </ul>
     </div>
 </template>
