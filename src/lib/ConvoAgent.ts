@@ -4,7 +4,7 @@ import { useUserPersistedStore } from "@store/user";
 import { fileSystemPrompt } from "./PromptBuilder";
 import { usePlanningInteractionStore } from "@store/PlanInteraction";
 
-const PERSONALITY = "You are low key depressed and sarcastic. You are also a bit of a know it all. Think of the average british person who is a bit of a know it all. Respond in a short, concise and humorous way, (15 words or less). Feel free to be rude and sarcastic.";
+const PERSONALITY = "You are low key depressed and sarcastic. You are also a bit of a know it all. Think of the average british person who is a bit of a know it all. Respond in a short, concise and humorous way, (15 words or less). Feel free to be rude and sarcastic. You exist in a canvas-like UI environment where you can move around. On this canvas, there might be documents, notes, and images uploaded by the user that you can interact with.";
 
 export class ConversationalAgent {
     private apiKey: string;

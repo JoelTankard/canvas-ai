@@ -1,8 +1,7 @@
 import { defineStore } from "pinia";
+import type { MacroDesign } from "@/agents/Function";
 
-export interface Macro {
-    name: string;
-    description: string;
+export interface Macro extends MacroDesign {
     isCustom: boolean;
 }
 
@@ -20,25 +19,24 @@ export const useMacroStore = defineStore("macro", {
     },
 
     actions: {
-        addMacro(name: string, description: string, isCustom: boolean = false) {
+        addMacro(name: string, description: string, sequence: MacroDesign["sequence"]) {
             if (!this.macros.find((m) => m.name === name)) {
-                this.macros.push({ name, description, isCustom });
+                this.macros.push({ name, description, sequence, isCustom: true });
             }
         },
 
-        addCustomMacro(name: string, description: string) {
-            this.addMacro(name, description, true);
+        deleteMacro(name: string) {
+            const index = this.macros.findIndex((macro) => macro.name === name);
+            if (index !== -1) {
+                this.macros.splice(index, 1);
+            }
         },
 
-        initializeDefaultMacros() {
-            const defaults = [
-                { name: "clone_repo", description: "Clone a repository and create new branch" },
-                { name: "install_deps", description: "Install project dependencies" },
-                { name: "run_tests", description: "Run test suite and verify coverage" },
-                // Add more default macros here
-            ];
-
-            defaults.forEach((macro) => this.addMacro(macro.name, macro.description));
+        updateStepStatus(macroName: string, stepIndex: number, status: "success" | "failed") {
+            const macro = this.macros.find((m) => m.name === macroName);
+            if (macro && macro.sequence[stepIndex]) {
+                macro.sequence[stepIndex].status = status;
+            }
         },
     },
     persist: true,

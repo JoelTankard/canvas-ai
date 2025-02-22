@@ -1,13 +1,16 @@
 <script setup lang="ts">
     import { usePlanningInteractionStore } from "@store/PlanInteraction";
     import { computed } from "vue";
-    import MacroSteps from "./MacroSteps.vue";
-
+    import MacroSequence from "./MacroSequence.vue";
+    import { useRoute } from "vue-router";
     const planningStore = usePlanningInteractionStore();
 
-    const allInteractions = computed(() => planningStore.interactions);
+    const route = useRoute();
+    const sessionId = computed(() => route.params.id as string);
 
-    const latestInteraction = computed(() => planningStore.interactions[planningStore.interactions.length - 1]);
+    const allInteractions = computed(() => planningStore.getIntercationBySessionId(sessionId.value));
+
+    const latestInteraction = computed(() => allInteractions.value?.[allInteractions.value.length - 1]);
 
     const latestPlanIteration = computed(() => {
         if (!latestInteraction.value?.planIterations.length) return null;
@@ -21,7 +24,7 @@
 </script>
 
 <template>
-    <div class="rounded-lg border p-4 space-y-4 h-full w-1/3 bg-white z-100 fixed bottom-0 right-0">
+    <div class="rounded-lg border p-4 space-y-4 bg-white z-100 outline outline-2 outline-blue-500 pointer-events-auto">
         <div class="h-full overflow-scroll relative">
             <div v-if="latestInteraction">
                 <div class="space-y-2">
@@ -51,8 +54,37 @@
                     </div>
 
                     <div v-if="latestPlanIteration.structuredPlan?.macroSequence.length">
-                        <div class="font-medium mb-2">Macro Steps:</div>
-                        <MacroSteps :steps="latestPlanIteration.structuredPlan.macroSequence" />
+                        <div class="font-medium mb-2">Plan macro steps:</div>
+                        <ol class="list-decimal list-inside">
+                            <li v-for="step in latestPlanIteration.structuredPlan.macroSequence" :key="step.name" class="mb-2">
+                                <div class="flex items-center gap-2">
+                                    <b>{{ step.macro }}</b>
+                                    <span
+                                        v-if="step.status"
+                                        :class="{
+                                            'text-green-600': step.status === 'success',
+                                            'text-red-600': step.status === 'failed',
+                                        }"
+                                        class="text-sm font-medium">
+                                        {{ step.status }}
+                                    </span>
+                                </div>
+                                <p class="ml-4 text-gray-600">{{ step.description }}</p>
+                                <p v-if="step.error" class="ml-4 text-red-600 text-sm mt-1">Error: {{ step.error }}</p>
+                                <div v-if="step.feasibility" class="ml-4 mt-2 text-sm">
+                                    <div :class="step.feasibility.is_feasible ? 'text-green-600' : 'text-red-600'">
+                                        {{ step.feasibility.is_feasible ? "Feasible" : "Not Feasible" }}
+                                    </div>
+                                    <div v-if="step.feasibility.reason" class="text-gray-600 mt-1">
+                                        {{ step.feasibility.reason }}
+                                    </div>
+                                    <div v-if="step.feasibility.suggested_primitives.length" class="mt-1">
+                                        <span class="text-gray-600">Suggested primitives:</span>
+                                        <span class="text-blue-600">{{ step.feasibility.suggested_primitives.join(", ") }}</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ol>
                     </div>
                 </div>
 

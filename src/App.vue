@@ -13,6 +13,7 @@
     import OpenAIDialog from "@/components/OpenAIDialog.vue";
     import DebugAssistants from "@/components/DebugAssistants.vue";
     import SessionTabs from "@/components/SessionTabs.vue";
+    import LatestPlanInteraction from "@/components/LatestPlanInteraction.vue";
     import { ref } from "vue";
     import { useDropZone } from "@vueuse/core";
     // import { greet, fetch_geolocation } from "src-rust";

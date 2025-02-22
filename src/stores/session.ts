@@ -118,18 +118,49 @@ export const useSessionStore = defineStore("session", {
                     const macroResult = await funcAgent.selectMacros(sessionId, macroStore.availableMacros).execute(textPlan);
                     console.log("Selected macros:", macroResult);
 
-                    // Process new macros in parallel
-                    const macroRequests = macroResult.new_macros.map((macro: MacroRequest) => ({
+                    // Ensure we have the expected structure and provide defaults
+                    const selected_macros = macroResult?.selected_macros || [];
+                    const new_macros = macroResult?.new_macros || [];
+
+                    // Combine all macros that need feasibility analysis
+                    const allMacroRequests = [
+                        ...selected_macros.map((macro: any) => ({
+                            name: macro.macro,
+                            description: macro.description || `Use existing macro ${macro.macro}`,
+                        })),
+                        ...new_macros.map((macro: MacroRequest) => ({
+                            name: macro.macro,
+                            description: macro.description,
+                        })),
+                    ];
+                    console.log("All macro requests to analyze:", allMacroRequests);
+
+                    // Analyze feasibility for all macros
+                    const feasibilityResults = await Promise.all(
+                        allMacroRequests.map(async (request: MacroDesignRequest) => {
+                            const feasibility = await funcAgent.analyzeMacroFeasibility(sessionId, request.description).execute("");
+                            return {
+                                macro: request.name,
+                                feasibility,
+                            };
+                        })
+                    );
+                    console.log("Feasibility results:", feasibilityResults);
+
+                    // Filter new macros for processing
+                    const newMacroRequests = new_macros.map((macro: MacroRequest) => ({
                         name: macro.macro,
                         description: macro.description,
                     }));
-                    console.log("Macro requests to process:", macroRequests);
 
-                    // Process macros in batches of 3
+                    // Filter out infeasible new macros
+                    const feasibleRequests = newMacroRequests.filter((request: MacroDesignRequest) => feasibilityResults.find((result) => result.macro === request.name && result.feasibility.is_feasible));
+
+                    // Process feasible new macros in batches of 3
                     const batchSize = 3;
                     const batches = [];
-                    for (let i = 0; i < macroRequests.length; i += batchSize) {
-                        batches.push(macroRequests.slice(i, i + batchSize));
+                    for (let i = 0; i < feasibleRequests.length; i += batchSize) {
+                        batches.push(feasibleRequests.slice(i, i + batchSize));
                     }
                     console.log("Batched macro requests:", batches);
 
@@ -149,16 +180,17 @@ export const useSessionStore = defineStore("session", {
 
                     // Add the designed macros to the store
                     allMacroDesigns.forEach((design) => {
-                        macroStore.addCustomMacro(design.name, design.description);
+                        macroStore.addMacro(design.name, design.description, design.sequence);
                     });
 
                     // Build the final sequence combining both selected and new macros
-                    const steps = [...macroResult.selected_macros, ...macroResult.new_macros]
+                    const steps = [...selected_macros, ...new_macros]
                         .sort((a, b) => a.step - b.step)
                         .map((step) => ({
                             step: step.step,
                             macro: step.macro,
                             ...(step.description && { description: step.description }),
+                            feasibility: feasibilityResults.find((result) => result.macro === step.macro)?.feasibility,
                         }));
                     console.log("Final macro sequence steps:", steps);
 

@@ -159,9 +159,10 @@ export const useFilesStore = defineStore(
                             createdAt: new Date(file.createdAt),
                             // Keep preview and position data
                             preview: file.preview,
+                            content: file.content,
                             position: file.position,
                             // File object can't be restored, but we can create a minimal version
-                            file: file.type.startsWith("image/") && file.preview ? new File([new Blob([])], file.name, { type: file.type }) : new File([new Blob([])], file.name),
+                            file: new File([new Blob([])], file.name, { type: file.type }),
                         }));
                     }
                     return parsed;

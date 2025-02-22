@@ -10,9 +10,20 @@
                     <FileObject :file="file" @positionUpdate="(x: number, y: number) => updateFilePosition(file.id, x, y)" />
                 </CanvasObject>
             </template>
+
+            <CanvasObject :position="{ x: 1200, y: -100 }">
+                <LatestPlanInteraction />
+            </CanvasObject>
+
+            <CanvasObject :position="{ x: 2100, y: -100 }">
+                <MacroList />
+            </CanvasObject>
+
+            <CanvasObject :position="{ x: 3000, y: -100 }">
+                <PrimativeList />
+            </CanvasObject>
             <Agent />
         </ZoomView>
-        <LatestPlanInteraction />
 
         <ChatInput />
         <Upload />
@@ -36,6 +47,8 @@
     import FileObject from "@/components/FileObject.vue";
     import AgentPointer from "@/components/AgentPointer.vue";
     import LatestPlanInteraction from "@/components/LatestPlanInteraction.vue";
+    import MacroList from "@/components/MacroList.vue";
+    import PrimativeList from "@/components/PrimativeList.vue";
     const route = useRoute();
     const sessionStore = useSessionStore();
     const filesStore = useFilesStore();

@@ -3,18 +3,34 @@ import { useUserPersistedStore } from "@store/user";
 import { fileSystemPrompt } from "./PromptBuilder";
 import { PropType } from "vue";
 
-type dataTypes = "boolean" | "object";
-type jsonSchema = {
+type DataTypes = "boolean" | "object" | "array";
+
+type JsonSchemaProperty =
+    | {
+          type: Exclude<DataTypes, "array">;
+          enum?: string[];
+          description?: string;
+      }
+    | {
+          type: "array";
+          // Here, "items" defines the schema for each element in the array.
+          // You could allow nested arrays by making this recursive if needed.
+          items: {
+              type: Exclude<DataTypes, "array">;
+              enum?: string[];
+              description?: string;
+          };
+          enum?: string[];
+          description?: string;
+      };
+
+type JsonSchema = {
     name: string;
     description: string;
     parameters: {
         type: "object";
         properties: {
-            [key: string]: {
-                type: string;
-                enum?: string[];
-                description?: string;
-            };
+            [key: string]: JsonSchemaProperty;
         };
         required: string[];
         additionalProperties?: boolean;
@@ -22,9 +38,9 @@ type jsonSchema = {
     strict?: boolean;
 };
 
-type toolSchema = {
+type ToolSchema = {
     type: "function";
-    function: jsonSchema;
+    function: JsonSchema;
 };
 
 const schemaTypes = {
@@ -98,7 +114,7 @@ export class FunctionCallingAgent {
 
         this.apiKey = userPersistedStore.openaiApiKey;
         this.model = model ?? "gpt-4o-mini";
-        this.systemPrompt = systemPrompt;
+        this.systemPrompt = `${systemPrompt}\nYou exist in a canvas-like UI environment where you can move around. On this canvas, there might be documents, notes, and images uploaded by the user that you can interact with.`;
         this.sessionId = sessionId;
         this.includeFileContent = includeFileContent ?? false;
         this.tools = toolsSchema ?? schemaTypes[type].tools;
@@ -128,6 +144,7 @@ export class FunctionCallingAgent {
                 throw new Error("No function response returned");
             }
 
+            console.log("Function response:", functionResponse);
             // Assuming the response is a string "yes" or "no"
             const answer = functionResponse.choices[0].message.tool_calls[0].function.arguments;
 

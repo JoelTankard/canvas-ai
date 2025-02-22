@@ -37,33 +37,40 @@ export const getIntent = (sessionId: string) => {
     });
 };
 
+export interface MacroSelectionResult {
+    selected_macros: Array<{
+        step: number;
+        macro: string;
+        description?: string;
+    }>;
+    new_macros: Array<{
+        step: number;
+        macro: string;
+        description: string;
+    }>;
+}
+
 export const selectMacros = (sessionId: string, availableMacros: string[]) => {
     const hasMacros = availableMacros.length > 0;
 
     const systemPrompt = hasMacros ? `Process these steps using existing macros where possible, create new ones where needed. Available macros: ${availableMacros.join(", ")}` : "Create new macros for the steps in this plan";
 
-    type ParameterType = {
-        type: "object";
+    const parameters = {
+        type: "object" as const,
         properties: {
-            [key: string]: {
-                type: string;
-                items?: {
-                    type: string;
+            selected_macros: {
+                type: "array",
+                items: {
+                    type: "object",
                     properties: {
-                        [key: string]: { type: string; description: string };
-                    };
-                    required: string[];
-                    additionalProperties: boolean;
-                };
-            };
-        };
-        required: string[];
-        additionalProperties: boolean;
-    };
-
-    const parameters: ParameterType = {
-        type: "object",
-        properties: {
+                        step: { type: "number", description: "Step number in sequence" },
+                        macro: { type: "string", description: "Name of the selected existing macro" },
+                        description: { type: "string", description: "Description of what this macro does" },
+                    },
+                    required: ["step", "macro", "description"],
+                    additionalProperties: false,
+                },
+            },
             new_macros: {
                 type: "array",
                 items: {
@@ -72,32 +79,15 @@ export const selectMacros = (sessionId: string, availableMacros: string[]) => {
                         step: { type: "number", description: "Step number in sequence" },
                         macro: { type: "string", description: "Name of the new macro (must be snake_case and follow verb_noun pattern)" },
                         description: { type: "string", description: "Clear description of what this macro does" },
-                        expected_output: { type: "string", description: "Clear description of what the macro will output" },
                     },
-                    required: ["step", "macro", "description", "expected_output"],
+                    required: ["step", "macro", "description"],
                     additionalProperties: false,
                 },
             },
         },
-        required: ["new_macros"],
+        required: ["new_macros", "selected_macros"],
         additionalProperties: false,
     };
-
-    if (hasMacros) {
-        parameters.properties.selected_macros = {
-            type: "array",
-            items: {
-                type: "object",
-                properties: {
-                    step: { type: "number", description: "Step number in sequence" },
-                    macro: { type: "string", description: "Name of the selected existing macro" },
-                },
-                required: ["step", "macro"],
-                additionalProperties: false,
-            },
-        };
-        parameters.required.push("selected_macros");
-    }
 
     return new FunctionCallingAgent({
         sessionId,
@@ -127,19 +117,67 @@ export interface MacroDesign {
     description: string;
     sequence: {
         primitive: keyof typeof primitives;
-        params: {
-            message?: string;
-            code?: string;
-            condition?: string;
-            branches?: Array<MacroDesign["sequence"]>;
-        };
+        message?: string;
+        code?: string;
+        condition?: string;
+        move_to_x?: number;
+        move_to_y?: number;
+        document_path?: string;
+        document_target?: string;
         description: string;
+        status?: "success" | "failed";
     }[];
 }
 
 export interface MacroDesignResponse {
     macros: MacroDesign[];
 }
+
+export interface MacroFeasibilityResult {
+    is_feasible: boolean;
+    suggested_primitives: string[];
+    reason?: string;
+}
+
+export const analyzeMacroFeasibility = (sessionId: string, macroDescription: string) => {
+    return new FunctionCallingAgent({
+        sessionId,
+        systemPrompt: "Analyze if a macro can be built from available primitives and suggest which ones would be useful. Consider: 1) If the macro's goal can be achieved with available primitives 2) Which primitives would be most appropriate 3) If the primitives can be meaningfully chained together for this purpose",
+        type: "object",
+        toolsSchema: [
+            {
+                type: "function",
+                function: {
+                    name: "analyze_macro_feasibility",
+                    description: "Analyze if a macro can be built from available primitives and suggest which ones to use",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            is_feasible: {
+                                type: "boolean",
+                                description: "Whether the macro can be feasibly built with available primitives",
+                            },
+                            suggested_primitives: {
+                                type: "array",
+                                description: "List of primitive names that would be useful for this macro",
+                                items: {
+                                    type: "string",
+                                    enum: Object.keys(primitives),
+                                },
+                            },
+                            reason: {
+                                type: "string",
+                                description: "Explanation of why the macro is or isn't feasible",
+                            },
+                        },
+                        required: ["is_feasible", "suggested_primitives", "reason"],
+                        additionalProperties: false,
+                    },
+                },
+            },
+        ],
+    });
+};
 
 export const designMacros = (sessionId: string, macroRequests: MacroDesignRequest[]) => {
     const systemPrompt = `Design macros that will work together as a cohesive system. Each macro should be composed of primitive operations.`;
@@ -153,8 +191,15 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
                 items: {
                     type: "object" as const,
                     properties: {
-                        name: { type: "string", description: "Name of the macro", enum: macroRequests.map((r) => r.name) },
-                        description: { type: "string", description: "Description of what the macro does" },
+                        name: {
+                            type: "string",
+                            description: "Name of the macro",
+                            enum: macroRequests.map((r) => r.name),
+                        },
+                        description: {
+                            type: "string",
+                            description: "Description of what the macro does",
+                        },
                         sequence: {
                             type: "array" as const,
                             description: "Sequence of primitive operations",
@@ -166,40 +211,46 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
                                         description: "Name of the primitive operation to use",
                                         enum: Object.keys(primitives),
                                     },
-                                    params: {
-                                        type: "object" as const,
-                                        description: "Parameters for the primitive",
-                                        properties: {
-                                            message: { type: "string", description: "Message to send (for send_message)" },
-                                            code: { type: "string", description: "Code to execute (for execute_code)" },
-                                            condition: { type: "string", description: "Condition to evaluate (for if_condition, if_else_condition)" },
-                                            branches: {
-                                                type: "array" as const,
-                                                description: "Branches for control flow primitives",
-                                                items: {
-                                                    type: "array" as const,
-                                                    items: {
-                                                        type: "object" as const,
-                                                        properties: {
-                                                            primitive: { type: "string", enum: Object.keys(primitives) },
-                                                            params: { type: "object" },
-                                                            description: { type: "string" },
-                                                        },
-                                                        required: ["primitive", "params", "description"],
-                                                    },
-                                                },
-                                            },
-                                        },
-                                        additionalProperties: false,
+                                    message: {
+                                        type: "string",
+                                        description: "Message to send (for send_message)",
                                     },
-                                    description: { type: "string", description: "Description of what this step does" },
+                                    code: {
+                                        type: "string",
+                                        description: "Code to execute (for execute_code)",
+                                    },
+                                    condition: {
+                                        type: "string",
+                                        description: "Condition to evaluate (for if_condition)",
+                                    },
+                                    move_to_x: {
+                                        type: "number",
+                                        description: "X coordinate for document movement",
+                                    },
+                                    move_to_y: {
+                                        type: "number",
+                                        description: "Y coordinate for document movement",
+                                    },
+                                    document_path: {
+                                        type: "string",
+                                        description: "Path of document to move",
+                                    },
+                                    document_target: {
+                                        type: "string",
+                                        description: "Target location for document",
+                                    },
+                                    description: {
+                                        type: "string",
+                                        description: "Description of what this step does",
+                                    },
                                 },
-                                required: ["primitive", "params", "description"],
+                                required: ["primitive", "description"],
+                                additionalProperties: false,
                             },
                         },
                     },
                     required: ["name", "description", "sequence"],
-                    additionalProperties: false, // <-- This fixes the error
+                    additionalProperties: false,
                 },
             },
         },

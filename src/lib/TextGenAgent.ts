@@ -15,7 +15,7 @@ export class TextGenAgent {
 
         this.apiKey = userPersistedStore.openaiApiKey;
         this.model = model ?? "gpt-4o-mini";
-        this.systemPrompt = systemPrompt;
+        this.systemPrompt = `${systemPrompt}\nYou exist in a canvas-like UI environment where you can move around. On this canvas, there might be documents, notes, and images uploaded by the user that you can interact with.`;
         this.includeFileContent = includeFileContent ?? false;
         this.sessionId = sessionId;
     }
