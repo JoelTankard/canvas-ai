@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useUserPersistedStore } from "@store/user";
-import { upload_file, analyze_image, analyze_file } from "src-rust";
+import { upload_file, analyze_image, analyze_file, create_assistant } from "src-rust";
+import { useAssistantStore } from "./assistant.ts";
 
 export interface UploadedDocument {
     id: number;
@@ -18,11 +19,15 @@ export interface UploadedDocument {
 }
 
 const analyseFiles = async (documents: UploadedDocument[]) => {
+    const assistantStore = useAssistantStore();
+
+    const parserAssistant = assistantStore.getAssistantByName("Parser");
+
     const userStore = await useUserPersistedStore();
     const openaiApiKey = userStore.openaiApiKey;
 
-    if (!openaiApiKey) {
-        throw new Error("OpenAI API key is not set");
+    if (!openaiApiKey || !parserAssistant?.id) {
+        throw new Error("OpenAI API key or assistant ID is not set");
     }
 
     const progress = Promise.all(
@@ -49,25 +54,11 @@ const analyseFiles = async (documents: UploadedDocument[]) => {
                             const buffer = await document.file.arrayBuffer();
                             const uint8Array = new Uint8Array(buffer);
 
-                            // Create multipart form-data boundary
-                            const boundary = "----WebKitFormBoundary" + Math.random().toString(36).slice(2);
-                            const formDataHeader = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${document.name}"\r\nContent-Type: ${document.type}\r\n\r\n`;
-                            const formDataFooter = `\r\n--${boundary}--\r\n`;
-
-                            // Combine the header, file data, and footer
-                            const headerArray = new TextEncoder().encode(formDataHeader);
-                            const footerArray = new TextEncoder().encode(formDataFooter);
-
-                            const combinedArray = new Uint8Array(headerArray.length + uint8Array.length + footerArray.length);
-                            combinedArray.set(headerArray, 0);
-                            combinedArray.set(uint8Array, headerArray.length);
-                            combinedArray.set(footerArray, headerArray.length + uint8Array.length);
-
-                            const uploadResponse = await upload_file(openaiApiKey, combinedArray, document.name);
+                            const uploadResponse = await upload_file(openaiApiKey, uint8Array, document.name);
                             const uploadResult = JSON.parse(uploadResponse);
                             document.openaiFileId = uploadResult.id;
 
-                            const analysisResponse = await analyze_file(openaiApiKey, uploadResult.id);
+                            const analysisResponse = await analyze_file(openaiApiKey, uploadResult.id, parserAssistant.id);
                             const analysisResult = JSON.parse(analysisResponse);
                             document.content = analysisResult.content;
                         }
@@ -86,11 +77,22 @@ const analyseFiles = async (documents: UploadedDocument[]) => {
     return progress;
 };
 
-export const useUploadedFilesStore = defineStore("uploadedFiles", () => {
+export const useFilesStore = defineStore("files", () => {
     const files = ref<UploadedDocument[]>([]);
     const notes = ref<{ id: number; content: string; x: number; y: number }[]>([]);
 
-    function addFiles(newFiles: File[]) {
+    async function addFiles(newFiles: File[]) {
+        const userStore = await useUserPersistedStore();
+        const openaiApiKey = userStore.openaiApiKey;
+
+        if (!openaiApiKey) {
+            throw new Error("OpenAI API key is not set");
+        }
+
+        const assistantStore = useAssistantStore();
+        // Initialize assistants using the new action
+        await assistantStore.initializeAssistants();
+
         files.value = newFiles.map((file) => ({
             id: files.value.length + 1,
             openaiFileId: "",

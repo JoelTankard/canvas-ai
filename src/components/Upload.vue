@@ -14,20 +14,20 @@
 <script setup lang="ts">
     import { ref, computed } from "vue";
     import { useDropZone } from "@vueuse/core";
-    import { useUploadedFilesStore } from "../stores/useUploadedFilesStore";
+    import { useFilesStore } from "../stores/files";
 
     const dropZoneRef = ref<HTMLDivElement>();
-    const uploadedFilesStore = useUploadedFilesStore();
+    const filesStore = useFilesStore();
 
     function onDrop(droppedFiles: File[] | null) {
         if (droppedFiles) {
-            uploadedFilesStore.addFiles(droppedFiles);
+            filesStore.addFiles(droppedFiles);
             console.log("Files dropped:", droppedFiles);
             // Handle the files here, e.g., upload them to a server
         }
     }
 
-    const uploadedFiles = computed(() => uploadedFilesStore.files);
+    const uploadedFiles = computed(() => filesStore.files);
 
     const { isOverDropZone } = useDropZone(dropZoneRef, {
         onDrop,

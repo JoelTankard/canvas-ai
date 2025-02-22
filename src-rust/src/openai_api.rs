@@ -189,7 +189,7 @@ pub async fn create_assistant(
     let file_ids: Vec<String> =
         serde_json::from_str(file_ids).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let response = client
+    let assistant_response = client
         .post(&format!("{}/assistants", BASE_URL))
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
@@ -205,29 +205,34 @@ pub async fn create_assistant(
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let text = response
-        .text()
+    let assistant: AssistantResponse = assistant_response
+        .json()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    Ok(text)
+    Ok(assistant.id)
 }
 
 #[wasm_bindgen]
-pub async fn create_thread() -> Result<String, JsValue> {
+pub async fn create_thread_with_assistant_id(
+    api_key: &str,
+    assistant_id: &str,
+) -> Result<String, JsValue> {
     let client = Client::new();
-    let response = client
+    let thread_response = client
         .post(&format!("{}/threads", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&json!({ "assistant_id": assistant_id }))
         .send()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let text = response
-        .text()
+    let thread: ThreadResponse = thread_response
+        .json()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    Ok(text)
+    Ok(thread.id)
 }
 
 #[wasm_bindgen]
@@ -235,20 +240,17 @@ pub async fn create_message(
     api_key: &str,
     thread_id: &str,
     content: &str,
-    file_ids: &str,
+    file_id: &str,
 ) -> Result<String, JsValue> {
     let client = Client::new();
-    let file_ids: Vec<String> =
-        serde_json::from_str(file_ids).map_err(|e| JsValue::from_str(&e.to_string()))?;
-
     let response = client
         .post(&format!("{}/threads/{}/messages", BASE_URL, thread_id))
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
         .json(&json!({
             "role": "user",
-            "content": content,
-            "file_ids": file_ids
+            "content": content
         }))
         .send()
         .await
@@ -376,7 +378,11 @@ pub async fn analyze_image(api_key: &str, image_url: &str) -> Result<String, JsV
 }
 
 #[wasm_bindgen]
-pub async fn analyze_file(api_key: &str, file_id: &str) -> Result<String, JsValue> {
+pub async fn analyze_file(
+    api_key: &str,
+    file_id: &str,
+    assistant_id: &str,
+) -> Result<String, JsValue> {
     let client = Client::new();
 
     // Create a temporary assistant for file analysis
@@ -422,8 +428,7 @@ pub async fn analyze_file(api_key: &str, file_id: &str) -> Result<String, JsValu
         .header("OpenAI-Beta", "assistants=v2")
         .json(&json!({
             "role": "user",
-            "content": "Please analyze this file and provide a comprehensive summary with key details.",
-            "file_ids": [file_id]
+            "content": "Please analyze this file and provide a comprehensive summary with key details."
         }))
         .send()
         .await
@@ -455,10 +460,6 @@ pub async fn analyze_file(api_key: &str, file_id: &str) -> Result<String, JsValu
     // Poll for completion
     let mut status = run.status;
     while status == "queued" || status == "in_progress" {
-        // Delay::new(Duration::from_secs(1))
-        //     .await
-        //     .map_err(|e| JsValue::from_str(&e.to_string()))?;
-
         let run_status_response = client
             .get(&format!(
                 "{}/threads/{}/runs/{}",

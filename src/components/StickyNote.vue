@@ -6,14 +6,14 @@
 
 <script setup>
     import { ref, onMounted, defineProps, inject, computed } from "vue";
-    import { useUploadedFilesStore } from "@/stores/useUploadedFilesStore";
+    import { useFilesStore } from "@/stores/files";
 
     const props = defineProps({
         id: Number,
     });
 
     const content = ref("");
-    const store = useUploadedFilesStore();
+    const store = useFilesStore();
     const noteElement = ref(null);
     const removeLocalNote = inject("removeLocalNote");
 

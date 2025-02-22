@@ -7,11 +7,11 @@
 
 <script setup>
     import { ref, provide, onMounted, computed } from "vue";
-    import { useUploadedFilesStore } from "@/stores/useUploadedFilesStore";
+    import { useFilesStore } from "@/stores/files";
     import StickyNote from "./StickyNote.vue";
     import { useMouse } from "@vueuse/core";
 
-    const store = useUploadedFilesStore();
+    const store = useFilesStore();
     const notes = computed(() => store.notes);
 
     const { x, y } = useMouse();

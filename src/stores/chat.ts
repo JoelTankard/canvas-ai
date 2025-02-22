@@ -1,6 +1,7 @@
 import { defineStore, storeToRefs } from "pinia";
 import { useUserPersistedStore } from "@store/user";
-import { create_assistant, create_thread, create_message, run_assistant, get_run, list_messages, upload_file } from "src-rust";
+import { create_message, run_assistant, get_run, list_messages, upload_file } from "src-rust";
+import { useAssistantStore } from "./assistant.ts";
 
 export interface Message {
     id: string;
@@ -49,19 +50,9 @@ export const useChatStore = defineStore("chat", {
             if (!userStore.openaiApiKey) throw new Error("API key not found");
 
             try {
-                // Create a new assistant if we don't have one
-                if (!this.assistantId) {
-                    const response = await create_assistant(userStore.openaiApiKey, "File Assistant", "You are a helpful assistant that can process files and answer questions about them.", "gpt-4-turbo-preview", "[]");
-                    const assistant = JSON.parse(response);
-                    this.assistantId = assistant.id;
-                }
-
-                // Create a new thread if we don't have one
-                if (!this.threadId) {
-                    const response = await create_thread();
-                    const thread = JSON.parse(response);
-                    this.threadId = thread.id;
-                }
+                const assistantStore = useAssistantStore();
+                // Initialize assistants using the new action
+                await assistantStore.initializeAssistants();
             } catch (error) {
                 console.error("Failed to initialize assistant:", error);
                 throw error;
