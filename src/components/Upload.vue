@@ -1,11 +1,26 @@
 <template>
-    <div class="absolute top-0 left-0">
-        <div ref="dropZoneRef" class="w-72 h-48 border-2 border-dashed transition-colors duration-300" :class="[isOverDropZone ? 'border-blue-500 bg-blue-50' : 'border-gray-300']" @dragover.prevent @drop.prevent>
-            <div class="flex items-center justify-center text-gray-500 h-full">Drop files here</div>
+    <div class="fixed inset-0 pointer-events-auto" @dragenter.prevent @dragover.prevent>
+        <div ref="dropZoneRef" class="w-full h-full transition-opacity duration-300 flex items-center justify-center" :class="[isOverDropZone ? 'opacity-100 bg-blue-500/20' : 'opacity-0']" @dragenter.prevent @dragover.prevent @drop.prevent="handleDrop" @dragleave.prevent>
+            <div class="text-2xl font-semibold text-blue-700">Drop files here</div>
         </div>
-        <ul class="mt-4">
-            <li v-for="file in sessionFiles" :key="file.name" class="text-gray-700">{{ file.name }} - {{ !file.content ? "processing..." : "ready" }}</li>
-        </ul>
+
+        <!-- File status list -->
+        <div class="absolute top-4 left-4 z-50">
+            <ul class="space-y-2">
+                <li v-for="file in sessionFiles" :key="file.name" class="flex items-center gap-2">
+                    <span class="text-gray-700">{{ file.name }}</span>
+                    <span
+                        class="text-sm"
+                        :class="{
+                            'text-blue-500': !file.content && file.content !== 'error',
+                            'text-green-500': file.content && file.content !== 'error',
+                            'text-red-500': file.content === 'error',
+                        }">
+                        {{ !file.content ? "uploading..." : file.content === "error" ? "failed" : "ready" }}
+                    </span>
+                </li>
+            </ul>
+        </div>
     </div>
 </template>
 
@@ -15,36 +30,87 @@
     import { useRoute } from "vue-router";
     import { useFilesStore } from "../stores/files";
     import { useSessionStore } from "../stores/session";
+    import type { InstanceType } from "vue";
+    import type CanvasObject from "./CanvasObject.vue";
+
+    const props = defineProps<{
+        canvasRef: InstanceType<typeof CanvasObject> | undefined;
+    }>();
 
     const dropZoneRef = ref<HTMLDivElement>();
     const filesStore = useFilesStore();
     const sessionStore = useSessionStore();
     const route = useRoute();
+    const pendingFiles = ref<{ name: string; status: string }[]>([]);
 
     const currentSession = computed(() => sessionStore.sessions[route.params.id as string]);
-    // Initialize session if needed
     sessionStore.initializeSession();
 
-    async function onDrop(droppedFiles: File[] | null) {
+    const handleDrop = async (event: DragEvent) => {
+        const droppedFiles = event.dataTransfer?.files;
         if (droppedFiles && currentSession.value) {
-            // Upload each file individually and collect their IDs
-            Promise.all(droppedFiles.map((file) => filesStore.uploadFile(file, currentSession.value.id)))
-                .then((fileIds) => {
-                    console.log("Files uploaded with IDs:", fileIds);
-                })
-                .catch((error) => {
-                    console.error("Failed to upload files:", error);
-                });
-        }
-    }
+            const dropX = event.clientX;
+            const dropY = event.clientY;
 
-    const sessionFiles = computed(() => (currentSession.value ? filesStore.getFilesBySessionId(currentSession.value.id) : []));
+            // Immediately add files to pending list
+            Array.from(droppedFiles).forEach((file) => {
+                pendingFiles.value.push({
+                    name: file.name,
+                    status: "uploading",
+                });
+            });
+
+            // Upload each file individually and update UI immediately
+            Promise.all(
+                Array.from(droppedFiles).map(async (file) => {
+                    try {
+                        const fileId = await filesStore.uploadFile(file, currentSession.value.id);
+                        // Remove from pending once uploaded
+                        pendingFiles.value = pendingFiles.value.filter((f) => f.name !== file.name);
+                        // Update file position in canvas
+                        props.canvasRef?.updateFilePosition(fileId, dropX, dropY);
+                        return fileId;
+                    } catch (error) {
+                        console.error(`Failed to upload file ${file.name}:`, error);
+                        // Update status to error
+                        const pendingFile = pendingFiles.value.find((f) => f.name === file.name);
+                        if (pendingFile) pendingFile.status = "error";
+                        return null;
+                    }
+                })
+            ).then((fileIds) => {
+                console.log("Files uploaded with IDs:", fileIds.filter(Boolean));
+            });
+        }
+    };
+
+    const sessionFiles = computed(() => {
+        const storeFiles = currentSession.value ? filesStore.getFilesBySessionId(currentSession.value.id) : [];
+        return [
+            ...pendingFiles.value.map((f) => ({
+                name: f.name,
+                content: f.status === "error" ? "error" : null,
+            })),
+            ...storeFiles,
+        ];
+    });
 
     const { isOverDropZone } = useDropZone(dropZoneRef, {
-        onDrop,
+        onDrop: () => {}, // We handle drop in handleDrop
+        onEnter: (_files: File[] | null, event: DragEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onLeave: (_files: File[] | null, event: DragEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onOver: (_files: File[] | null, event: DragEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
         dataTypes: ["image/jpeg", "image/png", "image/gif", "application/pdf", "text/plain"],
         multiple: true,
-        preventDefaultForUnhandled: true,
     });
 </script>
 

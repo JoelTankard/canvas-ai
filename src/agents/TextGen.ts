@@ -40,7 +40,6 @@ Ethical Concerns:
 • [Concise ethical concern 1]
 • [Concise ethical concern 2]
 • [Concise ethical concern 3]`,
-        model: "gpt-4-turbo-preview",
     });
 }
 
@@ -72,7 +71,6 @@ Example:
 5. Implement basic component structure
 6. Add unit tests for new component
 7. Verify tests pass and coverage meets requirements`,
-        model: "gpt-4-turbo-preview",
     });
 }
 
@@ -106,6 +104,5 @@ Format your response as a JSON array:
         }
     ]
 }`,
-        model: "gpt-4-turbo-preview",
     });
 }

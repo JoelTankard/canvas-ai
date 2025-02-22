@@ -7,7 +7,6 @@ type dataTypes = "boolean" | "object";
 type jsonSchema = {
     name: string;
     description: string;
-
     parameters: {
         type: "object";
         properties: {
@@ -20,47 +19,68 @@ type jsonSchema = {
         required: string[];
         additionalProperties?: boolean;
     };
+    strict?: boolean;
+};
+
+type toolSchema = {
+    type: "function";
+    function: jsonSchema;
 };
 
 const schemaTypes = {
     boolean: {
-        tools: {
-            name: "yes_no_function",
-            description: "A function that returns yes or no",
-            parameters: {
-                type: "object",
-                properties: {
-                    is_true: {
-                        type: "string",
-                        enum: ["yes", "no"],
-                        description: "Set to true if the answer is yes, false if the answer is no.",
+        tools: [
+            {
+                type: "function",
+                function: {
+                    name: "yes_no_function",
+                    description: "A function that returns yes or no",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            is_true: {
+                                type: "string",
+                                enum: ["yes", "no"],
+                                description: "Set to true if the answer is yes, false if the answer is no.",
+                            },
+                        },
+                        required: ["is_true"],
+                        additionalProperties: false,
                     },
+                    strict: true,
                 },
-                required: ["is_true"],
-                additionalProperties: false,
             },
-        },
+        ],
+
         outputFunction: (response: any) => {
             return response?.is_true === "yes";
         },
     },
+
     object: {
-        tools: {
-            name: "object_function",
-            description: "A function that returns an object",
-            parameters: {
-                type: "object",
-                properties: {},
-                required: [],
+        tools: [
+            {
+                type: "function",
+                function: {
+                    name: "object_function",
+                    description: "A function that returns an object",
+                    parameters: {
+                        type: "object",
+                        properties: {},
+                        required: [],
+                    },
+                    strict: true,
+                },
             },
-        },
+        ],
+
         outputFunction: (response: string) => {
             return JSON.parse(response);
         },
     },
 } as {
     [key in dataTypes]: {
-        tools: jsonSchema;
+        tools: toolSchema[];
         outputFunction: (response: string) => any;
     };
 };
@@ -71,9 +91,9 @@ export class FunctionCallingAgent {
     private model: string;
     private systemPrompt: string;
     private includeFileContent: boolean;
-    private tools: jsonSchema;
+    private tools: toolSchema[];
     private outputFunction: (response: string) => any;
-    constructor({ sessionId, model, systemPrompt, type, toolsSchema, includeFileContent }: { sessionId: string; model?: string; systemPrompt: string; type: dataTypes; toolsSchema?: jsonSchema; includeFileContent?: boolean }) {
+    constructor({ sessionId, model, systemPrompt, type, toolsSchema, includeFileContent }: { sessionId: string; model?: string; systemPrompt: string; type: dataTypes; toolsSchema?: toolSchema[]; includeFileContent?: boolean }) {
         const userPersistedStore = useUserPersistedStore();
 
         this.apiKey = userPersistedStore.openaiApiKey;
@@ -98,12 +118,7 @@ export class FunctionCallingAgent {
             },
         ];
 
-        const tools = JSON.stringify([
-            {
-                type: "function",
-                function: { ...this.tools, strict: true },
-            },
-        ]);
+        const tools = JSON.stringify(this.tools);
 
         try {
             const response = await call_function_calling(this.apiKey, JSON.stringify(messages), this.model, tools, 300);

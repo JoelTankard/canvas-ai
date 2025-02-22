@@ -108,19 +108,27 @@ export const useSessionStore = defineStore("session", {
                 // First iteration with just the text plan and critique
                 planningStore.addPlanIteration(interaction.id, textPlan, anxiousCritique);
 
-                // Convert plan to macro sequence using structured output
-                const macroSequence = await structuredAgent.macroConverter(sessionId, macroStore.availableMacros).interact(textPlan);
+                // Convert plan to macro sequence using function calling
+                const macroResult = await funcAgent.selectMacros(sessionId, macroStore.availableMacros).execute(textPlan);
 
-                // Add any new macros to the store
-                const structuredPlan = JSON.parse(macroSequence);
-                structuredPlan.macroSequence.forEach((step: any) => {
-                    if (step.description) {
-                        macroStore.addCustomMacro(step.macro, step.description);
-                    }
+                // Process new macros first if any were created
+                macroResult.new_macros.forEach((macro: any) => {
+                    macroStore.addCustomMacro(macro.macro, macro.description);
                 });
 
+                // Build the final sequence combining both selected and new macros
+                const steps = [...macroResult.selected_macros, ...macroResult.new_macros]
+                    .sort((a, b) => a.step - b.step)
+                    .map((step) => ({
+                        step: step.step,
+                        macro: step.macro,
+                        ...(step.description && { description: step.description }),
+                    }));
+
+                const macroSequence = { macroSequence: steps };
+
                 // Update the plan with the structured macro sequence
-                planningStore.addPlanIteration(interaction.id, textPlan, anxiousCritique, structuredPlan);
+                planningStore.addPlanIteration(interaction.id, textPlan, anxiousCritique, macroSequence);
 
                 await convoAgent.notifyPlanning(sessionId, getIntent.intent).interact(message, "display");
                 return;

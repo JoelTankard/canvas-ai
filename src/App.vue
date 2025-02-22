@@ -1,7 +1,7 @@
 <template>
     <main class="main">
         <OpenAIDialog />
-        <DebugAssistants />
+        <!-- <DebugAssistants /> -->
         <router-view></router-view>
         <SessionTabs />
     </main>

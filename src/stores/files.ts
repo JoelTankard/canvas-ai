@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { useUserPersistedStore } from "@store/user";
 import { useSessionStore } from "@store/session";
-import { upload_file } from "src-rust";
+import { upload_file, delete_file } from "src-rust";
 import { useRoute } from "vue-router";
 import { addFileToQueue, addImageToQueue } from "./thread";
 
@@ -98,9 +98,29 @@ export const useFilesStore = defineStore(
             return files.value.filter((file) => file.sessionId === sessionId).every((file) => file.content !== "");
         }
 
+        async function deleteFile(fileId: string): Promise<void> {
+            const userStore = await useUserPersistedStore();
+            const openaiApiKey = userStore.openaiApiKey;
+
+            if (!openaiApiKey) {
+                throw new Error("OpenAI API key is not set");
+            }
+
+            try {
+                await delete_file(openaiApiKey, fileId);
+                // Remove from local store
+                files.value = files.value.filter((f) => f.id !== fileId);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "Unknown error";
+                console.error("Failed to delete file:", error);
+                throw new Error(errorMessage);
+            }
+        }
+
         return {
             files,
             uploadFile,
+            deleteFile,
             clearFiles,
             getFileById,
             updateFileContent,

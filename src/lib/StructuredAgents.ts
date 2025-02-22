@@ -12,7 +12,7 @@ export class StructuredAgent {
         const userPersistedStore = useUserPersistedStore();
 
         this.apiKey = userPersistedStore.openaiApiKey;
-        this.model = model ?? "gpt-4o-mini";
+        this.model = model ?? "gpt-4o-mini-2024-07-18";
         this.systemPrompt = systemPrompt;
         this.schema = schema;
         this.sessionId = sessionId;

@@ -463,17 +463,10 @@ pub async fn call_structured_output(
             "messages": [
                 {
                     "role": "system",
-                    "content": prompt
+                    "content": format!("You must respond with valid JSON matching this schema: {}\n\n{}", schema, prompt)
                 }
             ],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "structured_output",
-                    "schema": schema_value,
-                    "strict": true
-                }
-            },
+            "response_format": { "type": "json_object" },
             "max_tokens": max_tokens
         }))
         .send()
@@ -522,4 +515,23 @@ pub async fn call_function_calling(
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     Ok(JsValue::from_str(&text))
+}
+
+#[wasm_bindgen]
+pub async fn delete_file(api_key: &str, file_id: &str) -> Result<String, JsValue> {
+    let client = Client::new();
+    let response = client
+        .delete(&format!("{}/files/{}", BASE_URL, file_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
 }
