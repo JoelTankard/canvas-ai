@@ -1,9 +1,10 @@
 <template>
-    <main class="container">
+    <main class="main">
         <OpenAIDialog />
         <Upload />
         <NoteAdder />
         <ChatInput />
+        <Chat />
     </main>
 </template>
 
@@ -15,6 +16,7 @@
     import { useUserPersistedStore } from "@/store/user";
     import NoteAdder from "@/components/NoteAdder.vue";
     import ChatInput from "@/components/ChatInput.vue";
+    import Chat from "@/components/Chat.vue";
     // import { greet, fetch_geolocation } from "src-rust";
 
     // const greetMsg = ref("");
@@ -29,7 +31,7 @@
 </script>
 
 <style lang="scss" scoped>
-    .container {
+    .main {
         @apply bg-zinc-100 h-screen w-screen;
     }
 </style>
