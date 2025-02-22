@@ -75,6 +75,20 @@ export const primitives: Record<string, Primitive> = {
             description: "Whether message was sent successfully",
         },
     },
+    get_document_position: {
+        type: "user_interaction",
+        name: "get_document_position",
+        description: "Get the position of a document",
+        input_schema: {
+            required: ["document_path"],
+            optional: [],
+        },
+        output_schema: {
+            type: "object",
+            description: "Position of the document",
+        },
+    },
+
     move_document: {
         type: "user_interaction",
         name: "move_document",
@@ -88,6 +102,35 @@ export const primitives: Record<string, Primitive> = {
             description: "Whether document was moved successfully",
         },
     },
+
+    delete_document: {
+        type: "user_interaction",
+        name: "delete_document",
+        description: "Delete a document",
+        input_schema: {
+            required: ["document_path"],
+            optional: [],
+        },
+        output_schema: {
+            type: "boolean",
+            description: "Whether document was deleted successfully",
+        },
+    },
+
+    request_permission: {
+        type: "user_interaction",
+        name: "request_permission",
+        description: "Request permission from the user",
+        input_schema: {
+            required: ["permission_type"],
+            optional: [],
+        },
+        output_schema: {
+            type: "boolean",
+            description: "Whether permission was granted successfully",
+        },
+    },
+
     execute_code: {
         type: "code_execution",
         name: "execute_code",

@@ -9,6 +9,8 @@
     const sessionId = computed(() => route.params.id as string);
 
     const allInteractions = computed(() => planningStore.getIntercationBySessionId(sessionId.value));
+    const isPlanning = computed(() => planningStore.isPlanning);
+    const error = computed(() => planningStore.error);
 
     const latestInteraction = computed(() => allInteractions.value?.[allInteractions.value.length - 1]);
 
@@ -26,6 +28,24 @@
 <template>
     <div class="rounded-lg border p-4 space-y-4 bg-white z-100 outline outline-2 outline-blue-500 pointer-events-auto">
         <div class="h-full overflow-scroll relative">
+            <div v-if="error" class="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
+                <div class="flex flex-col items-center gap-2 max-w-md text-center px-4">
+                    <div class="text-red-500 text-xl">⚠️</div>
+                    <div class="text-red-500 font-medium">Planning Error</div>
+                    <div class="text-red-600">{{ error }}</div>
+                </div>
+            </div>
+
+            <div v-if="isPlanning" class="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
+                <div class="flex flex-col items-center gap-4 p-6 bg-white rounded-lg shadow-lg border border-blue-100">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-100 border-t-blue-500"></div>
+                    <div>
+                        <div class="text-blue-500 font-semibold text-lg">Planning in progress...</div>
+                        <div class="text-blue-400 text-sm text-center mt-1">Please wait while we process your request</div>
+                    </div>
+                </div>
+            </div>
+
             <div v-if="latestInteraction">
                 <div class="space-y-2">
                     <h3 class="text-lg font-semibold">Latest Plan</h3>
@@ -72,8 +92,14 @@
                                 <p class="ml-4 text-gray-600">{{ step.description }}</p>
                                 <p v-if="step.error" class="ml-4 text-red-600 text-sm mt-1">Error: {{ step.error }}</p>
                                 <div v-if="step.feasibility" class="ml-4 mt-2 text-sm">
-                                    <div :class="step.feasibility.is_feasible ? 'text-green-600' : 'text-red-600'">
-                                        {{ step.feasibility.is_feasible ? "Feasible" : "Not Feasible" }}
+                                    <div class="flex gap-2">
+                                        <div :class="step.feasibility.is_feasible ? 'text-green-600' : 'text-red-600'">
+                                            {{ step.feasibility.is_feasible ? "Feasible" : "Not Feasible" }}
+                                        </div>
+                                        <div v-if="!step.feasibility.is_feasible && step.feasibility.is_possible" class="text-amber-600">(Partially Possible)</div>
+                                        <div :class="step.feasibility.status === 'success' ? 'text-green-600' : 'text-red-600'">
+                                            {{ step.feasibility.status }}
+                                        </div>
                                     </div>
                                     <div v-if="step.feasibility.reason" class="text-gray-600 mt-1">
                                         {{ step.feasibility.reason }}

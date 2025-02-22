@@ -3,7 +3,7 @@
         <h2 class="text-xl font-semibold mb-4">Available Primatives</h2>
 
         <ul>
-            <li v-for="primitive in primitives" :key="primitive.name">
+            <li v-for="primitive in primitivesList" :key="primitive.name">
                 <b>{{ primitive.name }}</b>
                 <p>{{ primitive.description }}</p>
             </li>
@@ -13,11 +13,13 @@
 
 <script setup lang="ts">
     import { onMounted, ref } from "vue";
-    import { primitives } from "@/lib/primitives";
+    import { primitives, type Primitive } from "@/lib/primitives";
 
-    let primitives = ref<Primitive[]>([]);
+    const primitivesList = ref<Primitive[]>([]);
 
     onMounted(() => {
-        primitives.value = Object.values(primitives);
+        console.log("Imported primitives:", primitives);
+        primitivesList.value = Object.values(primitives);
+        console.log("PrimitivesList value:", primitivesList.value);
     });
 </script>

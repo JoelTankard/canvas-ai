@@ -154,7 +154,10 @@ export const useSessionStore = defineStore("session", {
                     }));
 
                     // Filter out infeasible new macros
-                    const feasibleRequests = newMacroRequests.filter((request: MacroDesignRequest) => feasibilityResults.find((result) => result.macro === request.name && result.feasibility.is_feasible));
+                    const feasibleRequests = newMacroRequests.filter((request: MacroDesignRequest) => {
+                        const result = feasibilityResults.find((result) => result.macro === request.name);
+                        return result && (result.feasibility.is_feasible || result.feasibility.is_possible);
+                    });
 
                     // Process feasible new macros in batches of 3
                     const batchSize = 3;

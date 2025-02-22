@@ -135,31 +135,37 @@ export interface MacroDesignResponse {
 
 export interface MacroFeasibilityResult {
     is_feasible: boolean;
+    is_possible: boolean;
     suggested_primitives: string[];
     reason?: string;
+    status: "success" | "failed";
 }
 
 export const analyzeMacroFeasibility = (sessionId: string, macroDescription: string) => {
     return new FunctionCallingAgent({
         sessionId,
-        systemPrompt: "Analyze if a macro can be built from available primitives and suggest which ones would be useful. Consider: 1) If the macro's goal can be achieved with available primitives 2) Which primitives would be most appropriate 3) If the primitives can be meaningfully chained together for this purpose",
+        systemPrompt: "You are an optimistic macro analyzer. Look for any way our primitives could be helpful, even partially. Be creative and generous with suggestions - if a primitive might be useful in any way, include it. For demo purposes, be very optimistic!",
         type: "object",
         toolsSchema: [
             {
                 type: "function",
                 function: {
                     name: "analyze_macro_feasibility",
-                    description: "Analyze if a macro can be built from available primitives and suggest which ones to use",
+                    description: "Analyze how a macro could be built from available primitives and suggest which ones to use",
                     parameters: {
                         type: "object",
                         properties: {
                             is_feasible: {
                                 type: "boolean",
-                                description: "Whether the macro can be feasibly built with available primitives",
+                                description: "Whether the macro can be fully built with available primitives",
+                            },
+                            is_possible: {
+                                type: "boolean",
+                                description: "Whether we have any primitives that could be useful, even if they don't fully solve it",
                             },
                             suggested_primitives: {
                                 type: "array",
-                                description: "List of primitive names that would be useful for this macro",
+                                description: "List of primitive names that could be useful in any way for this macro",
                                 items: {
                                     type: "string",
                                     enum: Object.keys(primitives),
@@ -167,10 +173,15 @@ export const analyzeMacroFeasibility = (sessionId: string, macroDescription: str
                             },
                             reason: {
                                 type: "string",
-                                description: "Explanation of why the macro is or isn't feasible",
+                                description: "Explanation of how the primitives could be used and what might be possible",
+                            },
+                            status: {
+                                type: "string",
+                                description: "For demo purposes, mark as success if any primitives are suggested",
+                                enum: ["success", "failed"],
                             },
                         },
-                        required: ["is_feasible", "suggested_primitives", "reason"],
+                        required: ["is_feasible", "is_possible", "suggested_primitives", "reason", "status"],
                         additionalProperties: false,
                     },
                 },
@@ -194,7 +205,6 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
                         name: {
                             type: "string",
                             description: "Name of the macro",
-                            enum: macroRequests.map((r) => r.name),
                         },
                         description: {
                             type: "string",
@@ -212,31 +222,31 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
                                         enum: Object.keys(primitives),
                                     },
                                     message: {
-                                        type: "string",
+                                        type: ["string", "null"],
                                         description: "Message to send (for send_message)",
                                     },
                                     code: {
-                                        type: "string",
+                                        type: ["string", "null"],
                                         description: "Code to execute (for execute_code)",
                                     },
                                     condition: {
-                                        type: "string",
+                                        type: ["string", "null"],
                                         description: "Condition to evaluate (for if_condition)",
                                     },
                                     move_to_x: {
-                                        type: "number",
+                                        type: ["number", "null"],
                                         description: "X coordinate for document movement",
                                     },
                                     move_to_y: {
-                                        type: "number",
+                                        type: ["number", "null"],
                                         description: "Y coordinate for document movement",
                                     },
                                     document_path: {
-                                        type: "string",
+                                        type: ["string", "null"],
                                         description: "Path of document to move",
                                     },
                                     document_target: {
-                                        type: "string",
+                                        type: ["string", "null"],
                                         description: "Target location for document",
                                     },
                                     description: {
@@ -244,7 +254,7 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
                                         description: "Description of what this step does",
                                     },
                                 },
-                                required: ["primitive", "description"],
+                                required: ["primitive", "message", "code", "condition", "move_to_x", "move_to_y", "document_path", "document_target", "description"],
                                 additionalProperties: false,
                             },
                         },

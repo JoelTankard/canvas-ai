@@ -8,6 +8,13 @@ export interface MacroStep {
     description?: string;
     status?: "success" | "failed";
     error?: string;
+    feasibility?: {
+        is_feasible: boolean;
+        is_possible: boolean;
+        reason?: string;
+        suggested_primitives: string[];
+        status: "success" | "failed";
+    };
 }
 
 export interface MacroSequence {
@@ -44,6 +51,8 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
         interactions: [] as PlanningInteraction[],
         // Current active session ID (should be set by your session store).
         currentInteractionId: "" as string,
+        isPlanning: false,
+        error: null as string | null,
     }),
     getters: {
         // Get all interactions for the current session.
@@ -185,6 +194,14 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
                     }
                 }
             }
+        },
+
+        setIsPlanning(value: boolean) {
+            this.isPlanning = value;
+        },
+
+        setError(error: string | null) {
+            this.error = error;
         },
     },
     persist: true, // Optional: persist interactions between reloads.
