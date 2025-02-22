@@ -6,10 +6,7 @@ use wasm_bindgen::prelude::*;
 use reqwest::Client;
 use serde_json::Value;
 
-pub use openai_api::{
-    create_assistant, create_message, create_thread, get_run, list_messages, run_assistant,
-    upload_file,
-};
+pub use openai_api::*;
 
 #[wasm_bindgen]
 extern "C" {

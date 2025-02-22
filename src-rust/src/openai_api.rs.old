@@ -1,0 +1,586 @@
+use js_sys::Function;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::error::Error;
+use wasm_bindgen::prelude::*;
+
+const BASE_URL: &str = "https://api.openai.com/v1";
+
+#[derive(Serialize, Deserialize)]
+pub struct FileUploadResponse {
+    id: String,
+    object: String,
+    bytes: u64,
+    created_at: u64,
+    filename: String,
+    purpose: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AssistantResponse {
+    id: String,
+    object: String,
+    created_at: u64,
+    name: Option<String>,
+    description: Option<String>,
+    model: String,
+    instructions: Option<String>,
+    tools: Vec<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ThreadResponse {
+    id: String,
+    object: String,
+    created_at: u64,
+    metadata: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MessageResponse {
+    id: String,
+    object: String,
+    created_at: u64,
+    thread_id: String,
+    role: String,
+    content: Vec<serde_json::Value>,
+    file_ids: Option<Vec<String>>,
+    assistant_id: Option<String>,
+    run_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RunResponse {
+    id: String,
+    object: String,
+    created_at: u64,
+    thread_id: String,
+    assistant_id: String,
+    status: String,
+    started_at: Option<u64>,
+    expires_at: Option<u64>,
+    completed_at: Option<u64>,
+    model: String,
+    instructions: Option<String>,
+    tools: Vec<serde_json::Value>,
+    file_ids: Vec<String>,
+}
+
+pub async fn call_completion_api(
+    api_key: &str,
+    prompt: &str,
+    model: &str,
+    max_tokens: u32,
+) -> Result<String, Box<dyn Error>> {
+    let client = Client::new();
+    let response = client
+        .post(&format!("{}/completions", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "model": model,
+            "prompt": prompt,
+            "max_tokens": max_tokens
+        }))
+        .send()
+        .await?;
+
+    let text = response.text().await?;
+    Ok(text)
+}
+
+pub async fn call_assistance_api(
+    api_key: &str,
+    input: &str,
+    model: &str,
+) -> Result<String, Box<dyn Error>> {
+    let client = Client::new();
+    let response = client
+        .post(&format!("{}/assistances", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&json!({
+            "model": model,
+            "input": input
+        }))
+        .send()
+        .await?;
+
+    let text = response.text().await?;
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn call_chat_completion(
+    api_key: &str,
+    messages: &str,
+    model: &str,
+) -> Result<String, JsValue> {
+    let client = Client::new();
+    let messages: Vec<serde_json::Value> =
+        serde_json::from_str(messages).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let response = client
+        .post(&format!("{}/chat/completions", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "model": model,
+            "messages": messages,
+            "stream": false
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn upload_file(
+    api_key: &str,
+    file_data: &[u8],
+    filename: &str,
+) -> Result<String, JsValue> {
+    let client = Client::new();
+    let form = reqwest::multipart::Form::new()
+        .part(
+            "file",
+            reqwest::multipart::Part::bytes(file_data.to_vec()).file_name(filename.to_string()),
+        )
+        .text("purpose", "assistants");
+
+    let response = client
+        .post(&format!("{}/files", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn create_assistant(
+    api_key: &str,
+    name: &str,
+    instructions: &str,
+    model: &str,
+) -> Result<String, JsValue> {
+    let client = Client::new();
+
+    let assistant_response = client
+        .post(&format!("{}/assistants", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&json!({
+            "name": name,
+            "instructions": instructions,
+            "model": model,
+            "tools": [{"type": "file_search"}],
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // Read and log the full response body
+    let response_text = assistant_response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let assistant: AssistantResponse =
+        serde_json::from_str(&response_text).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(assistant.id)
+}
+
+#[wasm_bindgen]
+pub async fn create_thread(api_key: &str) -> Result<String, JsValue> {
+    let client = Client::new();
+    let thread_response = client
+        .post(&format!("{}/threads", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let thread: ThreadResponse = thread_response
+        .json()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(thread.id)
+}
+
+#[wasm_bindgen]
+pub async fn create_message(
+    api_key: &str,
+    thread_id: &str,
+    content: &str,
+    file_ids_json: &str,
+) -> Result<String, JsValue> {
+    let client = Client::new();
+    let file_ids: Vec<String> =
+        serde_json::from_str(file_ids_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let response = client
+        .post(&format!("{}/threads/{}/messages", BASE_URL, thread_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&json!({
+            "role": "user",
+            "content": content,
+            "attachments": file_ids.iter().map(|file_id| json!({
+                "file_id": file_id,
+                "tools": [{"type": "file_search"}]
+            })).collect::<Vec<_>>()
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn run_assistant(
+    api_key: &str,
+    thread_id: &str,
+    assistant_id: &str,
+    instructions: Option<String>,
+) -> Result<String, JsValue> {
+    let client = Client::new();
+    let mut body = json!({
+        "assistant_id": assistant_id,
+    });
+
+    if let Some(inst) = instructions {
+        body.as_object_mut()
+            .unwrap()
+            .insert("instructions".to_string(), json!(inst));
+    }
+
+    let response = client
+        .post(&format!("{}/threads/{}/runs", BASE_URL, thread_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn get_run(api_key: &str, thread_id: &str, run_id: &str) -> Result<String, JsValue> {
+    let client = Client::new();
+    let response = client
+        .get(&format!(
+            "{}/threads/{}/runs/{}",
+            BASE_URL, thread_id, run_id
+        ))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn list_messages(api_key: &str, thread_id: &str) -> Result<String, JsValue> {
+    let client = Client::new();
+    let response = client
+        .get(&format!("{}/threads/{}/messages", BASE_URL, thread_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn analyze_image(api_key: &str, image_url: &str) -> Result<String, JsValue> {
+    let client = Client::new();
+    let response = client
+        .post(&format!("{}/chat/completions", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "model": "gpt-4o-mini",
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Please analyze this image and provide a description along with key details."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url
+                        }
+                    }
+                ]
+            }],
+            "max_tokens": 300
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn analyze_file(
+    api_key: &str,
+    file_id: &str,
+    assistant_id: &str,
+) -> Result<String, JsValue> {
+    let client = Client::new();
+
+    // Create a temporary assistant for file analysis
+    let assistant_response = client
+        .post(&format!("{}/assistants", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&json!({
+            "model": "gpt-4-turbo-preview",
+            "instructions": "Please analyze the provided file and give a detailed summary with key details.",
+            "tools": [{"type": "retrieval"}],
+            "file_ids": [file_id]
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let assistant: AssistantResponse = assistant_response
+        .json()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // Create a thread
+    let thread_response = client
+        .post(&format!("{}/threads", BASE_URL))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let thread: ThreadResponse = thread_response
+        .json()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // Create a message in the thread
+    let message_response = client
+        .post(&format!("{}/threads/{}/messages", BASE_URL, thread.id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&json!({
+            "role": "user",
+            "content": "Please analyze this file and provide a comprehensive summary with key details."
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let _message: MessageResponse = message_response
+        .json()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // Run the assistant
+    let run_response = client
+        .post(&format!("{}/threads/{}/runs", BASE_URL, thread.id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&json!({
+            "assistant_id": assistant.id
+        }))
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let run: RunResponse = run_response
+        .json()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // Poll for completion
+    let mut status = run.status;
+    while status == "queued" || status == "in_progress" {
+        let run_status_response = client
+            .get(&format!(
+                "{}/threads/{}/runs/{}",
+                BASE_URL, thread.id, run.id
+            ))
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("OpenAI-Beta", "assistants=v2")
+            .send()
+            .await
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        let run_status: RunResponse = run_status_response
+            .json()
+            .await
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        status = run_status.status;
+    }
+
+    // Get the messages
+    let messages_response = client
+        .get(&format!("{}/threads/{}/messages", BASE_URL, thread.id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = messages_response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    Ok(text)
+}
+
+#[wasm_bindgen]
+pub async fn run_assistant_stream(
+    api_key: &str,
+    thread_id: &str,
+    assistant_id: &str,
+    instructions: Option<String>,
+    callback: Function,
+) -> Result<(), JsValue> {
+    web_sys::console::log_1(&"Starting run_assistant_stream".into());
+    let client = Client::new();
+
+    // First create the run
+    let mut body = json!({
+        "assistant_id": assistant_id,
+    });
+
+    if let Some(inst) = instructions {
+        body.as_object_mut()
+            .unwrap()
+            .insert("instructions".to_string(), json!(inst));
+    }
+
+    web_sys::console::log_1(&"Creating run...".into());
+    let run_response = client
+        .post(&format!("{}/threads/{}/runs", BASE_URL, thread_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .header("OpenAI-Beta", "assistants=v2")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let run: RunResponse = run_response
+        .json()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    // Now poll the messages endpoint with streaming
+    web_sys::console::log_1(&"Starting message stream...".into());
+    let stream_response = client
+        .get(&format!("{}/threads/{}/messages", BASE_URL, thread_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("OpenAI-Beta", "assistants=v2")
+        .header("Accept", "text/event-stream")
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let text = stream_response
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    web_sys::console::log_1(&format!("Got messages: {}", text).into());
+
+    // Parse and send each message
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+        if let Some(data) = json["data"].as_array() {
+            for message in data {
+                if message["role"] == "assistant" {
+                    if let Some(content) = message["content"].as_array() {
+                        if !content.is_empty() {
+                            if let Some(text_value) = content[0]["text"]["value"].as_str() {
+                                web_sys::console::log_1(
+                                    &format!("Sending text: {}", text_value).into(),
+                                );
+                                callback
+                                    .call1(&JsValue::NULL, &JsValue::from_str(text_value))
+                                    .map_err(|e| {
+                                        JsValue::from_str(&format!(
+                                            "Error calling callback: {:?}",
+                                            e
+                                        ))
+                                    })?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    web_sys::console::log_1(&"Streaming completed".into());
+    Ok(())
+}

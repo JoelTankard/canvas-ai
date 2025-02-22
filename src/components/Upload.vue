@@ -30,7 +30,7 @@
     async function onDrop(droppedFiles: File[] | null) {
         if (droppedFiles && currentSession.value) {
             // Upload each file individually and collect their IDs
-            Promise.all(droppedFiles.map((file) => filesStore.uploadFile(file)))
+            Promise.all(droppedFiles.map((file) => filesStore.uploadFile(file, currentSession.value.id)))
                 .then((fileIds) => {
                     console.log("Files uploaded with IDs:", fileIds);
                 })

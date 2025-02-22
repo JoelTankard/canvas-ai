@@ -11,6 +11,7 @@ export interface UploadedFile {
     type: string;
     size: number;
     file: File;
+    content: string;
     createdAt: Date;
     error: string | null;
 }
@@ -20,11 +21,9 @@ export const useFilesStore = defineStore(
     () => {
         const files = ref<UploadedFile[]>([]);
 
-        async function uploadFile(file: File): Promise<string> {
+        async function uploadFile(file: File, sessionId: string): Promise<string> {
             const userStore = await useUserPersistedStore();
             const openaiApiKey = userStore.openaiApiKey;
-            const route = useRoute();
-            const sessionId = route.params.id as string;
 
             if (!openaiApiKey) {
                 throw new Error("OpenAI API key is not set");
@@ -47,6 +46,7 @@ export const useFilesStore = defineStore(
                     type: file.type,
                     size: file.size,
                     file: file,
+                    content: "",
                     createdAt: new Date(),
                     error: null,
                 });

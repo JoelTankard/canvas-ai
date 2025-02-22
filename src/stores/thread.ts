@@ -11,10 +11,7 @@ export interface Thread {
 // Define a configuration for threads
 const threadConfig = [
     {
-        name: "user-thread-id", // Placeholder ID, replace with actual logic to generate or retrieve thread IDs
-    },
-    {
-        name: "ai-thread-id", // Placeholder ID for AI thread
+        name: "parser-thread", // Placeholder ID, replace with actual logic to generate or retrieve thread IDs
     },
     // Add more threads as needed
 ];
