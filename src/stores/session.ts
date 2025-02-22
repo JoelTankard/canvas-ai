@@ -95,10 +95,9 @@ export const useSessionStore = defineStore("session", {
 
                 // Get anxious critique about potential failures
                 const anxiousCritique = await textGenAgent.anxiousCritique(sessionId).generate(getIntent.intent);
-                planningStore.addPlanIteration(interaction.id, "Initial Plan", anxiousCritique);
 
                 // Generate step-by-step plan considering the critique
-                const plan = await textGenAgent.planGenerator(sessionId).generate(
+                const textPlan = await textGenAgent.planGenerator(sessionId).generate(
                     JSON.stringify({
                         intent: getIntent.intent,
                         constraints: anxiousCritique,
@@ -106,19 +105,22 @@ export const useSessionStore = defineStore("session", {
                     })
                 );
 
+                // First iteration with just the text plan and critique
+                planningStore.addPlanIteration(interaction.id, textPlan, anxiousCritique);
+
                 // Convert plan to macro sequence using structured output
-                const macroSequence = await structuredAgent.macroConverter(sessionId, macroStore.availableMacros).interact(plan);
+                const macroSequence = await structuredAgent.macroConverter(sessionId, macroStore.availableMacros).interact(textPlan);
 
                 // Add any new macros to the store
-                const sequence = JSON.parse(macroSequence);
-                sequence.macroSequence.forEach((step: any) => {
+                const structuredPlan = JSON.parse(macroSequence);
+                structuredPlan.macroSequence.forEach((step: any) => {
                     if (step.description) {
                         macroStore.addCustomMacro(step.macro, step.description);
                     }
                 });
 
-                // Add the plan and macro sequence to the planning store
-                planningStore.addPlanIteration(interaction.id, plan, anxiousCritique, sequence.macroSequence);
+                // Update the plan with the structured macro sequence
+                planningStore.addPlanIteration(interaction.id, textPlan, anxiousCritique, structuredPlan);
 
                 await convoAgent.notifyPlanning(sessionId, getIntent.intent).interact(message, "display");
                 return;

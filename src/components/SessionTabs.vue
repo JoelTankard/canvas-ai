@@ -1,20 +1,24 @@
 <template>
     <div class="w-full border-b bg-white fixed top-0 left-0 right-0">
-        <div class="flex justify-between items-center py-2">
+        <div class="flex justify-between items-center">
             <Tabs v-model="activeTab" class="w-full">
-                <TabsList class="w-full flex justify-between items-center">
-                    <div class="flex-1 flex space-x-2 overflow-x-auto">
-                        <TabsTrigger v-for="sessionId in Object.keys(sessions)" :key="sessionId" :value="sessionId" class="flex items-center">
-                            <span class="truncate max-w-[150px]">Session {{ sessionId.slice(0, 8) }}</span>
-                            <Button variant="ghost" size="icon" class="h-4 w-4 p-0" @click.stop="deleteSession(sessionId)">
-                                <XIcon class="h-3 w-3" />
-                            </Button>
+                <TabsList class="w-full flex justify-between items-center bg-transparent h-16">
+                    <div class="flex-1 flex overflow-x-auto">
+                        <TabsTrigger v-for="sessionId in Object.keys(sessions)" :key="sessionId" :value="sessionId" :class="['flex items-center bg-white border-r-2 border-b-zinc-200 ', { 'border-2 border-blue-500': sessionId === activeTab }]">
+                            <div class="flex items-center justify-between w-48 h-12">
+                                <p class="truncate w-full overflow-hidden">{{ sessionId.slice(0, 8) }}</p>
+                                <Button variant="ghost" size="icon" class="h-4 w-4" @click.stop="deleteSession(sessionId)">
+                                    <XIcon class="h-3 w-3" />
+                                </Button>
+                            </div>
                         </TabsTrigger>
                     </div>
-                    <Button variant="outline" size="sm" class="ml-2" @click="createNewSession">
-                        <PlusIcon class="h-4 w-4 mr-1" />
-                        New Session
-                    </Button>
+                    <div class="flex items-center p-4">
+                        <Button variant="outline" size="sm" class="ml-2" @click="createNewSession">
+                            <PlusIcon class="h-4 w-4 mr-1" />
+                            New Session
+                        </Button>
+                    </div>
                 </TabsList>
             </Tabs>
         </div>

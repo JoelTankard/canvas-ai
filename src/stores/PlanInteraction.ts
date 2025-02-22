@@ -7,11 +7,15 @@ export interface MacroStep {
     description?: string;
 }
 
+export interface MacroSequence {
+    macroSequence: MacroStep[];
+}
+
 export interface PlanIteration {
     version: number;
-    plan: string;
+    textPlan: string;
+    structuredPlan?: MacroSequence;
     critique?: string;
-    macroSequence?: MacroStep[];
     timestamp: number;
 }
 
@@ -85,15 +89,15 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
             }
         },
         // Add a new plan iteration to a specific planning interaction.
-        addPlanIteration(interactionId: string, plan: string, critique?: string, macroSequence?: MacroStep[]) {
+        addPlanIteration(interactionId: string, textPlan: string, critique?: string, structuredPlan?: MacroSequence) {
             const interaction = this.interactions.find((interaction) => interaction.id === interactionId);
             if (interaction) {
                 const version = interaction.planIterations.length + 1;
                 interaction.planIterations.push({
                     version,
-                    plan,
+                    textPlan,
+                    structuredPlan,
                     critique,
-                    macroSequence,
                     timestamp: Date.now(),
                 });
                 interaction.updatedAt = Date.now();

@@ -12,15 +12,23 @@
 
     onMounted(() => {
         if (zoomView.value) {
-            panzoom(zoomView.value, {
-                // Disable mousewheel zooming by default
-                beforeWheel: (e) => {
+            const instance = panzoom(zoomView.value, {
+                beforeWheel: (e: WheelEvent) => {
                     // Only allow zooming with Ctrl/Cmd key pressed
                     const isZoomEvent = e.ctrlKey || e.metaKey;
-                    return !isZoomEvent; // return true to prevent default behavior
+
+                    if (!isZoomEvent) {
+                        // Convert wheel movement to pan
+                        // Invert both directions for more natural feel
+                        const dx = -e.deltaX;
+                        const dy = -e.deltaY;
+                        instance.moveBy(dx, dy, false);
+                        e.preventDefault();
+                        return true;
+                    }
+
+                    return !isZoomEvent; // allow zooming when Ctrl/Cmd is pressed
                 },
-                // Customize zoom speed
-                // zoomSpeed: 0.065,
                 smoothScroll: false,
             });
         }
@@ -29,8 +37,8 @@
 
 <style scoped>
     .zoom-view {
-        width: 100%;
+        /* width: 100%;
         height: 100%;
-        overflow: hidden;
+        overflow: hidden; */
     }
 </style>
