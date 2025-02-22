@@ -1,18 +1,23 @@
 <template>
     <div :class="['chat-input', { 'is-focused': isFocused }]" :style="styleChatInput">
-        <input ref="inputRef" v-model="message" placeholder="Message" @focus="onFocus" @blur="onBlur" @keydown.enter="sendMessage" :disabled="chatStore.isInputLocked" />
+        <input ref="inputRef" v-model="message" placeholder="Message" @focus="onFocus" @blur="onBlur" @keydown.enter="sendMessage" :disabled="currentSession?.isInputLocked" />
     </div>
 </template>
 
 <script setup lang="ts">
     import { ref, computed, watch, nextTick } from "vue";
     import { useMouse, useMagicKeys } from "@vueuse/core";
-    import { useChatStore } from "@/stores/chat";
+    import { useSessionStore } from "@/stores/session";
+    import { useRoute } from "vue-router";
     const { slash } = useMagicKeys();
     const inputRef = ref<HTMLInputElement>();
     const { x, y } = useMouse();
 
-    const chatStore = useChatStore();
+    const sessionStore = useSessionStore();
+    const route = useRoute();
+
+    const currentSessionId = computed(() => route.params.id as string);
+    const currentSession = sessionStore.getSessionById(currentSessionId.value);
     const message = ref("");
 
     const isFocused = ref(false);
@@ -29,9 +34,9 @@
     }
 
     function sendMessage() {
-        if (!message.value.trim() || chatStore.isInputLocked) return;
+        if (!message.value.trim() || currentSession?.isInputLocked) return;
 
-        chatStore.addMessage(message.value, "user");
+        sessionStore.addMessage(currentSessionId.value, message.value);
         message.value = "";
 
         inputRef.value?.blur();

@@ -1,11 +1,17 @@
 <script setup lang="ts">
-    import { ref, watch } from "vue";
-    import { useChatStore } from "../stores/chat";
-    import type { Message } from "../stores/chat";
+    import { ref, watch, computed } from "vue";
+    import { useMessagesStore } from "@store/messages";
+    import { useSessionStore } from "@store/session";
+    import { useRoute } from "vue-router";
     import { Button } from "@ui";
 
-    const chatStore = useChatStore();
-    const messageInput = ref("");
+    const messageStore = useMessagesStore();
+    const sessionStore = useSessionStore();
+    const route = useRoute();
+
+    const currentSession = computed(() => sessionStore.sessions[route.params.id as string]);
+
+    const messages = computed(() => messageStore.getMessagesBySessionId(currentSession.value!.id));
     const chatContainer = ref<HTMLDivElement>();
     const fileInput = ref<HTMLInputElement>();
 
@@ -19,35 +25,8 @@
         return new Date(timestamp).toLocaleTimeString();
     };
 
-    const handleFileUpload = async (event: Event) => {
-        const input = event.target as HTMLInputElement;
-        if (!input.files?.length) return;
-
-        try {
-            const fileId = await chatStore.uploadFile(input.files[0]);
-            messageInput.value = messageInput.value.trim() + " [Uploaded file: " + input.files[0].name + "]";
-            input.value = ""; // Clear the input
-        } catch (error) {
-            console.error("Failed to upload file:", error);
-            // You might want to show an error message to the user
-        }
-    };
-
-    const sendMessage = async () => {
-        if (!messageInput.value.trim() || chatStore.isInputLocked) return;
-
-        const message = messageInput.value;
-        messageInput.value = "";
-
-        // Get the file IDs from the uploaded files
-        const fileIds = chatStore.uploadedFiles.map((file) => file.id);
-
-        await chatStore.addMessage(message, "user", fileIds);
-        scrollToBottom();
-    };
-
     watch(
-        () => chatStore.messages,
+        () => messages.value,
         () => {
             scrollToBottom();
         },
@@ -58,39 +37,24 @@
 <template>
     <div class="chat-container">
         <div ref="chatContainer" class="messages">
-            <div v-for="message in chatStore.messages" :key="message.id" :class="['message', message.role]">
+            <div v-for="message in messages" :key="message.id" :class="['message', message.role]">
                 <div class="message-content">{{ message.content }}</div>
                 <div v-if="message.fileIds?.length" class="file-attachments">
                     <div v-for="fileId in message.fileIds" :key="fileId" class="file-attachment">
-                        {{ chatStore.uploadedFiles.find((f) => f.id === fileId)?.name || "Attached file" }}
+                        {{ filesStore.getFileById(fileId)?.name || "Attached file" }}
                     </div>
                 </div>
                 <div class="message-time">{{ formatTimestamp(message.timestamp) }}</div>
             </div>
 
-            <div v-for="step in chatStore.steps" :key="step.id" class="step">
-                <div class="step-content">
-                    <span class="step-tool">{{ step.tool }}</span>
-                    <span :class="['step-status', step.status]">{{ step.status }}</span>
-                </div>
-                <div class="step-time">{{ formatTimestamp(step.timestamp) }}</div>
-            </div>
-
-            <div v-if="chatStore.isAgentTyping" class="typing-indicator">AI is typing...</div>
-        </div>
-
-        <div class="input-container">
-            <input v-model="messageInput" :disabled="chatStore.isInputLocked" @keyup.enter="sendMessage" placeholder="Type your message..." type="text" />
-            <input ref="fileInput" type="file" @change="handleFileUpload" :disabled="chatStore.isInputLocked" style="display: none" />
-            <Button @click="fileInput?.click()" :disabled="chatStore.isInputLocked" variant="outline" size="icon">📎</Button>
-            <Button @click="sendMessage" :disabled="chatStore.isInputLocked || !messageInput.trim()">Send</Button>
+            <div v-if="currentSession?.isAgentTyping" class="typing-indicator">AI is typing...</div>
         </div>
     </div>
 </template>
 
 <style scoped>
     .chat-container {
-        @apply fixed bottom-0 right-0 w-96 h-96 bg-white rounded-lg shadow-lg;
+        @apply fixed bottom-0 right-0 w-96 h-96 bg-white/50;
     }
 
     .messages {

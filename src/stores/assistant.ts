@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
-import { useUserPersistedStore } from "./user";
-import { create_assistant, create_thread_with_assistant_id } from "src-rust";
-import { useThread } from "./thread";
+import { useUserPersistedStore } from "@store/user";
+import { create_assistant } from "src-rust";
 
 export interface AssistantConfig {
     name: string;
@@ -40,7 +39,7 @@ export const useAssistantStore = defineStore("assistant", {
             this.assistants = assistants;
         },
         addAssistant(assistant: Assistant) {
-            if (!this.assistants.includes(assistant)) {
+            if (!this.assistants.find((a) => a.id === assistant.id)) {
                 this.assistants.push(assistant);
             }
         },
@@ -52,22 +51,16 @@ export const useAssistantStore = defineStore("assistant", {
                 throw new Error("API key is not set");
             }
 
-            const existingConfigs = new Set<string>();
-            const threadStore = useThread();
-
             for (const config of assistantsConfig) {
-                const configKey = JSON.stringify(config);
-                if (existingConfigs.has(configKey)) {
-                    continue; // Skip creating duplicate assistant
+                const assistant = this.getAssistantByName(config.name);
+                if (!assistant) {
+                    const assistant_id = await create_assistant(apiKey, config.name, config.description, config.model, JSON.stringify(config.tools));
+                    console.log("assistant_id response", assistant_id);
+                    const assistant = { id: assistant_id, ...config };
+                    this.addAssistant(assistant);
                 }
-
-                const assistant_id = await create_assistant(apiKey, config.name, config.description, config.model, JSON.stringify(config.tools));
-                const thread_id = await create_thread_with_assistant_id(apiKey, assistant_id);
-                const assistant = { id: assistant_id, ...config };
-                this.addAssistant(assistant);
-                threadStore.addThread({ id: thread_id, assistantId: assistant_id });
-                existingConfigs.add(configKey);
             }
         },
     },
+    persist: true,
 });

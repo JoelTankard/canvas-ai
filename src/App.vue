@@ -1,22 +1,17 @@
 <template>
     <main class="main">
+        <SessionTabs />
         <OpenAIDialog />
-        <Upload />
-        <NoteAdder />
-        <ChatInput />
-        <Chat />
+        <DebugAssistants />
+        <router-view></router-view>
     </main>
 </template>
 
 <script setup lang="ts">
-    import { ref } from "vue";
-    import { Button } from "@ui";
     import OpenAIDialog from "@/components/OpenAIDialog.vue";
-    import Upload from "@/components/Upload.vue";
-    import { useUserPersistedStore } from "@/store/user";
-    import NoteAdder from "@/components/NoteAdder.vue";
-    import ChatInput from "@/components/ChatInput.vue";
-    import Chat from "@/components/Chat.vue";
+    import DebugAssistants from "@/components/DebugAssistants.vue";
+    import SessionTabs from "@/components/SessionTabs.vue";
+
     // import { greet, fetch_geolocation } from "src-rust";
 
     // const greetMsg = ref("");

@@ -3,7 +3,9 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
+            "@ui/*": ["./src/components/ui/*"],
             "@ui": ["./src/components/ui"],
+            "@store/*": ["./src/stores/*"],
             "@store": ["./src/stores"]
         },
         "target": "ES2020",
@@ -26,6 +28,6 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true
     },
-    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/stores/chat.ts.old"],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

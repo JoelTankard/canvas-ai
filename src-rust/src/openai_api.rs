@@ -1,11 +1,8 @@
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::error::Error;
-use std::time::Duration;
 use wasm_bindgen::prelude::*;
-use wasm_timer::Delay;
 
 const BASE_URL: &str = "https://api.openai.com/v1";
 
@@ -29,7 +26,6 @@ pub struct AssistantResponse {
     model: String,
     instructions: Option<String>,
     tools: Vec<serde_json::Value>,
-    file_ids: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -48,7 +44,7 @@ pub struct MessageResponse {
     thread_id: String,
     role: String,
     content: Vec<serde_json::Value>,
-    file_ids: Vec<String>,
+    file_ids: Option<Vec<String>>,
     assistant_id: Option<String>,
     run_id: Option<String>,
 }
@@ -183,11 +179,8 @@ pub async fn create_assistant(
     name: &str,
     instructions: &str,
     model: &str,
-    file_ids: &str,
 ) -> Result<String, JsValue> {
     let client = Client::new();
-    let file_ids: Vec<String> =
-        serde_json::from_str(file_ids).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let assistant_response = client
         .post(&format!("{}/assistants", BASE_URL))
@@ -198,31 +191,31 @@ pub async fn create_assistant(
             "name": name,
             "instructions": instructions,
             "model": model,
-            "tools": [{"type": "retrieval"}],
-            "file_ids": file_ids
+            "tools": [{"type": "file_search"}],
         }))
         .send()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-    let assistant: AssistantResponse = assistant_response
-        .json()
+    // Read and log the full response body
+    let response_text = assistant_response
+        .text()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let assistant: AssistantResponse =
+        serde_json::from_str(&response_text).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     Ok(assistant.id)
 }
 
 #[wasm_bindgen]
-pub async fn create_thread_with_assistant_id(
-    api_key: &str,
-    assistant_id: &str,
-) -> Result<String, JsValue> {
+pub async fn create_thread(api_key: &str) -> Result<String, JsValue> {
     let client = Client::new();
     let thread_response = client
         .post(&format!("{}/threads", BASE_URL))
         .header("Authorization", format!("Bearer {}", api_key))
-        .json(&json!({ "assistant_id": assistant_id }))
+        .header("OpenAI-Beta", "assistants=v2")
         .send()
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -240,9 +233,12 @@ pub async fn create_message(
     api_key: &str,
     thread_id: &str,
     content: &str,
-    file_id: &str,
+    file_ids_json: &str,
 ) -> Result<String, JsValue> {
     let client = Client::new();
+    let file_ids: Vec<String> =
+        serde_json::from_str(file_ids_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
     let response = client
         .post(&format!("{}/threads/{}/messages", BASE_URL, thread_id))
         .header("Authorization", format!("Bearer {}", api_key))
@@ -250,7 +246,11 @@ pub async fn create_message(
         .header("OpenAI-Beta", "assistants=v2")
         .json(&json!({
             "role": "user",
-            "content": content
+            "content": content,
+            "attachments": file_ids.iter().map(|file_id| json!({
+                "file_id": file_id,
+                "tools": [{"type": "file_search"}]
+            })).collect::<Vec<_>>()
         }))
         .send()
         .await
