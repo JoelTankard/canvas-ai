@@ -1,5 +1,7 @@
 <template>
     <div class="session-view">
+        <AgentPointer />
+
         <ZoomView>
             <Agent />
             <NoteAdder />
@@ -10,7 +12,6 @@
                 </CanvasObject>
             </template>
         </ZoomView>
-        <AgentPointer />
         <ChatInput />
         <Upload :canvasRefs="canvasRefs" />
         <Chat />

@@ -1,5 +1,10 @@
 <template>
     <div class="agent-pointer-wrapper" :style="pointerStyle">
+        <div class="last-agent-message">
+            <div class="last-agent-message-inner">
+                <p>{{ lastAgentMessage }}</p>
+            </div>
+        </div>
         <div class="agent-pointer">
             <div class="agent-image">
                 <img src="@/assets/small-agent.png" alt="Agent" />
@@ -15,6 +20,17 @@
     import { ref, computed, onMounted, watch } from "vue";
     import { storeToRefs } from "pinia";
     import { useAgentStore } from "@/stores/agent";
+    import { useMessagesStore } from "@/stores/messages";
+    import { useRoute } from "vue-router";
+
+    const route = useRoute();
+    const messageStore = useMessagesStore();
+    const sessionId = computed(() => route.params.id as string);
+    const displayMessages = computed(() => messageStore.getDisplayMessages(sessionId.value));
+
+    const lastAgentMessage = computed(() => {
+        return displayMessages.value.reverse().find((message) => message.role === "assistant")?.content;
+    });
 
     const agentStore = useAgentStore();
     const { agentPosition, scale: agentScale } = storeToRefs(agentStore);
@@ -131,5 +147,13 @@
 
     .agent-pointer-inner {
         @apply flex items-end justify-center absolute -m-8;
+    }
+
+    .last-agent-message {
+        @apply absolute bottom-0 left-0 flex items-start justify-start w-auto min-w-64 max-w-screen-sm mb-16 ml-8;
+
+        .last-agent-message-inner {
+            @apply w-full bg-white rounded-xl rounded-bl-sm p-4 shadow-xl inline-block w-full;
+        }
     }
 </style>
