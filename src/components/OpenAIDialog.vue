@@ -17,14 +17,14 @@
 
 <script setup lang="ts">
     import { ref, computed } from "vue";
-    import { useUserPersistedStore } from "@/store/user";
+    import { useUserPersistedStore } from "@store/user";
     import { Dialog, Input, Button } from "@ui";
     import { DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@ui/dialog";
 
     const apiKey = ref("");
     const store = useUserPersistedStore();
 
-    const showDialog = computed(() => !store.apiKey);
+    const showDialog = computed(() => !store.openaiApiKey);
 
     const saveApiKey = () => {
         store.setApiKey(apiKey.value);

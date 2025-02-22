@@ -7,12 +7,13 @@ import App from "./App.vue";
 import "./assets/css/index.css";
 
 // Initialize WASM before mounting the app
-init().then(() => {
-    const pinia = createPinia();
-    pinia.use(piniaPluginPersistedstate);
+// @ts-ignore
+init();
 
-    const app = createApp(App);
-    app.use(pinia);
+const pinia = createPinia();
+pinia.use(piniaPluginPersistedstate);
 
-    app.mount("#app");
-});
+const app = createApp(App);
+app.use(pinia);
+
+app.mount("#app");

@@ -3,7 +3,8 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
-            "@ui": ["./src/components/ui"]
+            "@ui": ["./src/components/ui"],
+            "@store": ["./src/stores"]
         },
         "target": "ES2020",
         "useDefineForClassFields": true,

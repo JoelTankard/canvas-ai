@@ -11,6 +11,9 @@ export const useUserPersistedStore = defineStore("userPersist", {
         count: 0,
         apiKey: "",
     }),
+    getters: {
+        openaiApiKey: (state) => state.apiKey || "",
+    },
     actions: {
         setApiKey(key: string) {
             this.apiKey = key;

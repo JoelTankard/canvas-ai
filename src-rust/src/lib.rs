@@ -1,22 +1,15 @@
+mod openai_api;
 mod utils;
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::spawn_local;
 
 use reqwest::Client;
-use serde::Deserialize;
 use serde_json::Value;
 
-#[derive(Deserialize, Debug)]
-struct GeoInfo {
-    ip: String,
-    country: String,
-    region: String,
-    city: String,
-    latitude: String,
-    longitude: String,
-    organization: String,
-}
+pub use openai_api::{
+    create_assistant, create_message, create_thread, get_run, list_messages, run_assistant,
+    upload_file,
+};
 
 #[wasm_bindgen]
 extern "C" {

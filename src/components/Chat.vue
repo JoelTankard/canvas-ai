@@ -2,10 +2,12 @@
     import { ref, watch } from "vue";
     import { useChatStore } from "../stores/chat";
     import type { Message } from "../stores/chat";
+    import { Button } from "@ui";
 
     const chatStore = useChatStore();
     const messageInput = ref("");
     const chatContainer = ref<HTMLDivElement>();
+    const fileInput = ref<HTMLInputElement>();
 
     const scrollToBottom = () => {
         if (chatContainer.value) {
@@ -17,9 +19,40 @@
         return new Date(timestamp).toLocaleTimeString();
     };
 
-    watch(chatStore.messages, () => {
+    const handleFileUpload = async (event: Event) => {
+        const input = event.target as HTMLInputElement;
+        if (!input.files?.length) return;
+
+        try {
+            const fileId = await chatStore.uploadFile(input.files[0]);
+            messageInput.value = messageInput.value.trim() + " [Uploaded file: " + input.files[0].name + "]";
+            input.value = ""; // Clear the input
+        } catch (error) {
+            console.error("Failed to upload file:", error);
+            // You might want to show an error message to the user
+        }
+    };
+
+    const sendMessage = async () => {
+        if (!messageInput.value.trim() || chatStore.isInputLocked) return;
+
+        const message = messageInput.value;
+        messageInput.value = "";
+
+        // Get the file IDs from the uploaded files
+        const fileIds = chatStore.uploadedFiles.map((file) => file.id);
+
+        await chatStore.addMessage(message, "user", fileIds);
         scrollToBottom();
-    });
+    };
+
+    watch(
+        () => chatStore.messages,
+        () => {
+            scrollToBottom();
+        },
+        { deep: true }
+    );
 </script>
 
 <template>
@@ -27,6 +60,11 @@
         <div ref="chatContainer" class="messages">
             <div v-for="message in chatStore.messages" :key="message.id" :class="['message', message.role]">
                 <div class="message-content">{{ message.content }}</div>
+                <div v-if="message.fileIds?.length" class="file-attachments">
+                    <div v-for="fileId in message.fileIds" :key="fileId" class="file-attachment">
+                        {{ chatStore.uploadedFiles.find((f) => f.id === fileId)?.name || "Attached file" }}
+                    </div>
+                </div>
                 <div class="message-time">{{ formatTimestamp(message.timestamp) }}</div>
             </div>
 
@@ -40,133 +78,90 @@
 
             <div v-if="chatStore.isAgentTyping" class="typing-indicator">AI is typing...</div>
         </div>
+
+        <div class="input-container">
+            <input v-model="messageInput" :disabled="chatStore.isInputLocked" @keyup.enter="sendMessage" placeholder="Type your message..." type="text" />
+            <input ref="fileInput" type="file" @change="handleFileUpload" :disabled="chatStore.isInputLocked" style="display: none" />
+            <Button @click="fileInput?.click()" :disabled="chatStore.isInputLocked" variant="outline" size="icon">📎</Button>
+            <Button @click="sendMessage" :disabled="chatStore.isInputLocked || !messageInput.trim()">Send</Button>
+        </div>
     </div>
 </template>
 
 <style scoped>
     .chat-container {
-        @apply fixed bottom-0 right-0;
+        @apply fixed bottom-0 right-0 w-96 h-96 bg-white rounded-lg shadow-lg;
     }
 
     .messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+        @apply h-[calc(100%-4rem)] overflow-y-auto p-4 flex flex-col gap-4;
     }
 
     .message {
-        max-width: 80%;
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        position: relative;
+        @apply max-w-[80%] p-3 rounded-lg relative;
     }
 
     .message.user {
-        align-self: flex-end;
-        background: #007aff;
-        color: white;
-        border-bottom-right-radius: 0.25rem;
+        @apply self-end bg-blue-500 text-white rounded-br-sm;
     }
 
     .message.assistant {
-        align-self: flex-start;
-        background: #f0f0f0;
-        color: #333;
-        border-bottom-left-radius: 0.25rem;
+        @apply self-start bg-gray-100 text-gray-900 rounded-bl-sm;
     }
 
     .message-time {
-        font-size: 0.75rem;
-        opacity: 0.7;
-        margin-top: 0.25rem;
+        @apply text-xs opacity-70 mt-1;
+    }
+
+    .file-attachments {
+        @apply mt-2 flex flex-wrap gap-2;
+    }
+
+    .file-attachment {
+        @apply text-xs py-1 px-2 rounded bg-opacity-20 bg-black;
     }
 
     .step {
-        align-self: center;
-        background: #f8f9fa;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        font-size: 0.875rem;
+        @apply self-center bg-gray-50 p-2 rounded text-sm;
     }
 
     .step-content {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        @apply flex items-center gap-2;
     }
 
     .step-tool {
-        font-weight: 500;
+        @apply font-medium;
     }
 
     .step-status {
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
-        font-size: 0.75rem;
+        @apply px-2 py-1 rounded text-xs;
     }
 
     .step-status.running {
-        background: #fff3cd;
-        color: #856404;
+        @apply bg-yellow-100 text-yellow-800;
     }
 
     .step-status.completed {
-        background: #d4edda;
-        color: #155724;
+        @apply bg-green-100 text-green-800;
     }
 
     .step-status.error {
-        background: #f8d7da;
-        color: #721c24;
+        @apply bg-red-100 text-red-800;
     }
 
     .typing-indicator {
-        align-self: flex-start;
-        color: #666;
-        font-style: italic;
-        padding: 0.5rem;
+        @apply self-start text-gray-600 italic p-2;
     }
 
     .input-container {
-        display: flex;
-        gap: 0.5rem;
-        padding: 1rem;
-        border-top: 1px solid #eee;
+        @apply h-16 flex items-center gap-2 p-4 border-t border-gray-200;
     }
 
-    input {
-        flex: 1;
-        padding: 0.75rem;
-        border: 1px solid #ddd;
-        border-radius: 0.5rem;
-        font-size: 1rem;
+    input[type="text"] {
+        @apply flex-1 p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500;
     }
 
-    input:disabled {
-        background: #f5f5f5;
-        cursor: not-allowed;
-    }
-
-    button {
-        padding: 0.75rem 1.5rem;
-        background: #007aff;
-        color: white;
-        border: none;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: opacity 0.2s;
-    }
-
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    button:hover:not(:disabled) {
-        opacity: 0.9;
+    input[type="text"]:disabled {
+        @apply bg-gray-100 cursor-not-allowed;
     }
 </style>
