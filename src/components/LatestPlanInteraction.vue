@@ -28,7 +28,7 @@
 <template>
     <div class="rounded-lg border p-4 space-y-4 bg-white z-100 outline outline-2 outline-blue-500 pointer-events-auto">
         <div class="h-full overflow-scroll relative">
-            <div v-if="error" class="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
+            <!-- <div v-if="error && !isPlanning" class="absolute top-0 right-0 bg-white/80 flex items-center justify-center z-50">
                 <div class="flex flex-col items-center gap-2 max-w-md text-center px-4">
                     <div class="text-red-500 text-xl">⚠️</div>
                     <div class="text-red-500 font-medium">Planning Error</div>
@@ -36,7 +36,7 @@
                 </div>
             </div>
 
-            <div v-if="isPlanning" class="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
+            <div v-if="isPlanning" class="bsolute top-0 right-0 bg-white/80 flex items-center justify-center z-50">
                 <div class="flex flex-col items-center gap-4 p-6 bg-white rounded-lg shadow-lg border border-blue-100">
                     <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-100 border-t-blue-500"></div>
                     <div>
@@ -44,7 +44,7 @@
                         <div class="text-blue-400 text-sm text-center mt-1">Please wait while we process your request</div>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <div v-if="latestInteraction">
                 <div class="space-y-2">

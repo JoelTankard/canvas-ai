@@ -17,6 +17,6 @@ export const notifyPlanning = (sessionId: string, intent: string) => {
 export const askForMoreContext = (sessionId: string) => {
     return new ConversationalAgent({
         sessionId,
-        systemPrompt: `You job is to ask the user for more context to understand their intent.`,
+        systemPrompt: `You job is to ask the user for more context to understand their intent, or tell them you can't or wont do that`,
     });
 };

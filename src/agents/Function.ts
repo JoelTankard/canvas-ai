@@ -1,5 +1,6 @@
 import { FunctionCallingAgent } from "../lib/FunctionCallingAgent";
 import { primitives } from "../lib/primitives";
+import { StructuredAgent } from "@/lib/StructuredAgents";
 
 export const canGetIntent = (sessionId: string) => {
     return new FunctionCallingAgent({
@@ -191,16 +192,14 @@ export const analyzeMacroFeasibility = (sessionId: string, macroDescription: str
 };
 
 export const designMacros = (sessionId: string, macroRequests: MacroDesignRequest[]) => {
-    const systemPrompt = `Design macros that will work together as a cohesive system. Each macro should be composed of primitive operations.`;
-
-    const parameters = {
-        type: "object" as const,
+    const schema = JSON.stringify({
+        type: "object",
         properties: {
             macros: {
-                type: "array" as const,
+                type: "array",
                 description: "List of macro designs",
                 items: {
-                    type: "object" as const,
+                    type: "object",
                     properties: {
                         name: {
                             type: "string",
@@ -211,10 +210,10 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
                             description: "Description of what the macro does",
                         },
                         sequence: {
-                            type: "array" as const,
+                            type: "array",
                             description: "Sequence of primitive operations",
                             items: {
-                                type: "object" as const,
+                                type: "object",
                                 properties: {
                                     primitive: {
                                         type: "string",
@@ -266,22 +265,11 @@ export const designMacros = (sessionId: string, macroRequests: MacroDesignReques
         },
         required: ["macros"],
         additionalProperties: false,
-    };
+    });
 
-    return new FunctionCallingAgent({
+    return new StructuredAgent<MacroDesignResponse>({
         sessionId,
-        systemPrompt,
-        type: "object",
-        toolsSchema: [
-            {
-                type: "function",
-                function: {
-                    name: "design_macros",
-                    description: `Design ${macroRequests.length} macros: ${macroRequests.map((r) => r.name).join(", ")}`,
-                    parameters,
-                    strict: true,
-                },
-            },
-        ],
+        systemPrompt: `Design macros that will work together as a cohesive system. Each macro should be composed of primitive operations. Design the following macros: ${macroRequests.map((r) => r.name).join(", ")}`,
+        schema,
     });
 };

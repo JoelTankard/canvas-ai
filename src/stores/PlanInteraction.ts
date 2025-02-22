@@ -91,6 +91,7 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
         },
         // Create a new planning interaction for the current session.
         createInteraction(userInput: string, intent: string, sessionId: string) {
+            this.isPlanning = true;
             const fileStore = useFilesStore();
             // Retrieve files associated with the current session from the file store.
             const filesAttached = fileStore.getFilesBySessionId(sessionId);
@@ -202,6 +203,7 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
 
         setError(error: string | null) {
             this.error = error;
+            this.isPlanning = false;
         },
     },
     persist: true, // Optional: persist interactions between reloads.

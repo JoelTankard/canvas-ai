@@ -172,12 +172,18 @@ export const useSessionStore = defineStore("session", {
                         console.log("Processing batch:", batch);
                         const batchResults = await Promise.all(
                             batch.map(async (request: MacroDesignRequest) => {
-                                const result = await funcAgent.designMacros(sessionId, [request]).execute("");
+                                const result = await funcAgent.designMacros(sessionId, [request]).interact("");
+                                console.log("Design result for macro:", request.name, result);
+                                if (!result || !result.macros || !Array.isArray(result.macros) || result.macros.length === 0) {
+                                    console.error("Invalid macro design response for:", request.name);
+                                    return null;
+                                }
                                 return result.macros[0];
                             })
                         );
                         console.log("Batch results:", batchResults);
-                        allMacroDesigns.push(...batchResults);
+                        const validResults = batchResults.filter((result): result is MacroDesign => result !== null);
+                        allMacroDesigns.push(...validResults);
                     }
                     console.log("All macro designs:", allMacroDesigns);
 
@@ -208,6 +214,7 @@ export const useSessionStore = defineStore("session", {
                         intent: getIntent.intent,
                         message,
                     });
+                    planningStore.setError("Ugh, something went wrong while planning. My bad.");
                     convoAgent.notifyPlanning(sessionId, "Ugh, something went wrong while planning. My bad.").interact(message, "display");
                     return;
                 }

@@ -3,20 +3,18 @@ import { useUserPersistedStore } from "@store/user";
 import { fileSystemPrompt } from "./PromptBuilder";
 import { PropType } from "vue";
 
-type DataTypes = "boolean" | "object" | "array";
+type DataTypes = "boolean" | "object" | "string";
 
 type JsonSchemaProperty =
     | {
-          type: Exclude<DataTypes, "array">;
+          type: DataTypes;
           enum?: string[];
           description?: string;
       }
     | {
           type: "array";
-          // Here, "items" defines the schema for each element in the array.
-          // You could allow nested arrays by making this recursive if needed.
           items: {
-              type: Exclude<DataTypes, "array">;
+              type: DataTypes;
               enum?: string[];
               description?: string;
           };
@@ -66,7 +64,7 @@ const schemaTypes = {
                     strict: true,
                 },
             },
-        ],
+        ] as ToolSchema[],
 
         outputFunction: (response: any) => {
             return response?.is_true === "yes";
@@ -88,18 +86,15 @@ const schemaTypes = {
                     strict: true,
                 },
             },
-        ],
+        ] as ToolSchema[],
 
         outputFunction: (response: string) => {
             return JSON.parse(response);
         },
     },
-} as {
-    [key in dataTypes]: {
-        tools: toolSchema[];
-        outputFunction: (response: string) => any;
-    };
-};
+} as const;
+
+type SchemaTypes = typeof schemaTypes;
 
 export class FunctionCallingAgent {
     private apiKey: string;
@@ -107,9 +102,9 @@ export class FunctionCallingAgent {
     private model: string;
     private systemPrompt: string;
     private includeFileContent: boolean;
-    private tools: toolSchema[];
+    private tools: ToolSchema[];
     private outputFunction: (response: string) => any;
-    constructor({ sessionId, model, systemPrompt, type, toolsSchema, includeFileContent }: { sessionId: string; model?: string; systemPrompt: string; type: dataTypes; toolsSchema?: toolSchema[]; includeFileContent?: boolean }) {
+    constructor({ sessionId, model, systemPrompt, type, toolsSchema, includeFileContent }: { sessionId: string; model?: string; systemPrompt: string; type: keyof SchemaTypes; toolsSchema?: ToolSchema[]; includeFileContent?: boolean }) {
         const userPersistedStore = useUserPersistedStore();
 
         this.apiKey = userPersistedStore.openaiApiKey;
@@ -145,10 +140,35 @@ export class FunctionCallingAgent {
             }
 
             console.log("Function response:", functionResponse);
-            // Assuming the response is a string "yes" or "no"
-            const answer = functionResponse.choices[0].message.tool_calls[0].function.arguments;
 
-            return this.outputFunction(answer);
+            // Check if we got a function call response
+            if (functionResponse.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments) {
+                const answer = functionResponse.choices[0].message.tool_calls[0].function.arguments;
+                return this.outputFunction(answer);
+            }
+
+            // If we got a regular chat completion, try to parse it as our expected type
+            if (functionResponse.choices?.[0]?.message?.content) {
+                try {
+                    // Try to parse the content as JSON
+                    const parsedContent = JSON.parse(functionResponse.choices[0].message.content);
+                    return this.outputFunction(JSON.stringify(parsedContent));
+                } catch (parseError) {
+                    // If it's not JSON, try to convert the message to our expected format
+                    if (this.tools[0]?.function?.name === "yes_no_function") {
+                        // For boolean type, look for yes/no in the content
+                        const content = functionResponse.choices[0].message.content.toLowerCase();
+                        const isTrue = content.includes("yes") || content.includes("can") || content.includes("possible");
+                        return this.outputFunction(JSON.stringify({ is_true: isTrue ? "yes" : "no" }));
+                    }
+
+                    // For object type, wrap the content in an object
+                    return this.outputFunction(JSON.stringify({ content: functionResponse.choices[0].message.content }));
+                }
+            }
+
+            console.error("Invalid function response structure:", functionResponse);
+            throw new Error("Invalid function response structure");
         } catch (error) {
             console.error("Error calling function:", error);
             throw error;
