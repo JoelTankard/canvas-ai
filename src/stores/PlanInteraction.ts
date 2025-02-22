@@ -1,10 +1,17 @@
 import { defineStore } from "pinia";
 import { useFilesStore } from "@store/files";
 
+export interface MacroStep {
+    step: number;
+    macro: string;
+    description?: string;
+}
+
 export interface PlanIteration {
     version: number;
     plan: string;
     critique?: string;
+    macroSequence?: MacroStep[];
     timestamp: number;
 }
 
@@ -78,7 +85,7 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
             }
         },
         // Add a new plan iteration to a specific planning interaction.
-        addPlanIteration(interactionId: string, plan: string, critique?: string) {
+        addPlanIteration(interactionId: string, plan: string, critique?: string, macroSequence?: MacroStep[]) {
             const interaction = this.interactions.find((interaction) => interaction.id === interactionId);
             if (interaction) {
                 const version = interaction.planIterations.length + 1;
@@ -86,6 +93,7 @@ export const usePlanningInteractionStore = defineStore("planningInteraction", {
                     version,
                     plan,
                     critique,
+                    macroSequence,
                     timestamp: Date.now(),
                 });
                 interaction.updatedAt = Date.now();

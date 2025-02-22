@@ -1,9 +1,9 @@
 <template>
     <main class="main">
-        <SessionTabs />
         <OpenAIDialog />
         <DebugAssistants />
         <router-view></router-view>
+        <SessionTabs />
     </main>
 </template>
 
@@ -27,6 +27,6 @@
 
 <style lang="scss" scoped>
     .main {
-        @apply bg-zinc-100 h-screen w-screen;
+        @apply bg-zinc-100 h-screen w-screen overflow-hidden;
     }
 </style>

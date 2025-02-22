@@ -1,8 +1,10 @@
 <template>
     <div class="session-view">
-        <Agent />
-        <Upload />
-        <NoteAdder />
+        <ZoomView>
+            <Agent />
+            <Upload />
+            <NoteAdder />
+        </ZoomView>
         <ChatInput />
         <Chat />
     </div>
@@ -17,7 +19,7 @@
     import ChatInput from "@/components/ChatInput.vue";
     import Chat from "@/components/Chat.vue";
     import Agent from "@/components/Agent.vue";
-
+    import ZoomView from "@/components/ZoomView.vue";
     const route = useRoute();
     const sessionStore = useSessionStore();
 

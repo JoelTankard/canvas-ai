@@ -16,9 +16,15 @@
 <script setup lang="ts">
     import { ref, computed, onMounted } from "vue";
 
+    const SPEED = 0.002;
+
     const scale = ref(0.2);
     const x = ref(0);
     const y = ref(0);
+
+    const travelTimeout = ref<NodeJS.Timeout | null>(null);
+
+    const transitionTime = ref(0);
 
     // center the agent on the screen
     // const center = () => {
@@ -34,20 +40,23 @@
         y.value = Math.random() * (window.innerHeight - 200);
 
         const distance = Math.sqrt(Math.pow(x.value - oldX, 2) + Math.pow(y.value - oldY, 2));
-        const transitionTime = distance * 0.002;
+        transitionTime.value = distance * SPEED;
 
-        document.querySelector(".agent")!.style.transition = `transform ${transitionTime}s linear`;
-
-        setTimeout(() => {
-            moveToRandomLocation();
-        }, transitionTime * 1000 + 1000);
+        if (travelTimeout.value) {
+            clearTimeout(travelTimeout.value);
+        }
+        travelTimeout.value = setTimeout(() => {
+            requestAnimationFrame(moveToRandomLocation);
+        }, transitionTime.value * 1000 + 1000);
     };
     onMounted(() => {
         // center();
+        moveToRandomLocation();
     });
     const style = computed(() => {
         return {
             transform: `translate(${x.value}px, ${y.value}px) scale(${scale.value})`,
+            transition: `transform ${transitionTime.value}s ease-in-out`,
         };
     });
 </script>

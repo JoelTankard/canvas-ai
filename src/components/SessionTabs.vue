@@ -1,10 +1,10 @@
 <template>
-    <div class="w-full border-b">
+    <div class="w-full border-b bg-white fixed top-0 left-0 right-0">
         <div class="flex justify-between items-center py-2">
             <Tabs v-model="activeTab" class="w-full">
                 <TabsList class="w-full flex justify-between items-center">
                     <div class="flex-1 flex space-x-2 overflow-x-auto">
-                        <TabsTrigger v-for="sessionId in Object.keys(sessions)" :key="sessionId" :value="sessionId" class="flex items-center space-x-2">
+                        <TabsTrigger v-for="sessionId in Object.keys(sessions)" :key="sessionId" :value="sessionId" class="flex items-center">
                             <span class="truncate max-w-[150px]">Session {{ sessionId.slice(0, 8) }}</span>
                             <Button variant="ghost" size="icon" class="h-4 w-4 p-0" @click.stop="deleteSession(sessionId)">
                                 <XIcon class="h-3 w-3" />

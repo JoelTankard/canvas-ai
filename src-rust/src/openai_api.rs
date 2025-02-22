@@ -451,14 +451,29 @@ pub async fn call_structured_output(
     max_tokens: u32,
 ) -> Result<JsValue, JsValue> {
     let client = Client::new();
+    let schema_value: serde_json::Value =
+        serde_json::from_str(schema).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
     let response = client
-        .post(&format!("{}/structured-outputs", BASE_URL))
+        .post(&format!("{}/chat/completions", BASE_URL))
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
             "model": model,
-            "prompt": prompt,
-            "schema": schema,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": prompt
+                }
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "structured_output",
+                    "schema": schema_value,
+                    "strict": true
+                }
+            },
             "max_tokens": max_tokens
         }))
         .send()
